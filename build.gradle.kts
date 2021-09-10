@@ -37,8 +37,8 @@ dependencies {
     compileOnly(kotlin("reflect"))
 
     compileOnly("com.github.Minestom:Minestom:2ef8e957a0")
-    compileOnly("com.github.Project-Cepi:KStom:4d5b02905d")
-    compileOnly("com.github.EmortalMC:Immortal:ea2e3d7778")
+    compileOnly("com.github.Project-Cepi:KStom:d9f7795e88")
+    compileOnly("com.github.EmortalMC:Immortal:ac13706b5f")
     implementation("net.kyori:adventure-text-minimessage:4.1.0-SNAPSHOT")
 
     // import kotlinx serialization

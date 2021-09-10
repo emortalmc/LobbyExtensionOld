@@ -37,8 +37,6 @@ class LightsOut(options: GameOptions) : Game(options) {
             val batch = AbsoluteBlockBatch()
 
             pointsBetween.forEach {
-                println(it)
-
                 batch.setBlock(it, litRedstoneLamp)
             }
 
@@ -51,7 +49,7 @@ class LightsOut(options: GameOptions) : Game(options) {
     }
 
     override fun registerEvents() {
-        childEventNode.listenOnly<PlayerBlockInteractEvent> {
+        eventNode.listenOnly<PlayerBlockInteractEvent> {
             if (hand != Player.Hand.MAIN) return@listenOnly
 
             if (block.compare(Block.REDSTONE_LAMP)) {

@@ -1,16 +1,26 @@
 package emortal.lobby
 
 import emortal.immortal.game.GameManager
+import emortal.immortal.game.GameManager.joinGameOrNew
 import emortal.immortal.game.GameOptions
 import emortal.immortal.game.GameTypeInfo
+import emortal.immortal.util.VoidGenerator
+import emortal.lobby.blockhandler.CampfireHandler
+import emortal.lobby.blockhandler.SignHandler
+import emortal.lobby.blockhandler.SkullHandler
+import emortal.lobby.commands.DiscCommand
 import emortal.lobby.commands.SpawnCommand
 import emortal.lobby.games.LightsOut
+import emortal.lobby.inventories.MusicPlayerInventory
+import net.kyori.adventure.text.minimessage.MiniMessage
+import net.minestom.server.advancements.Advancement
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.GameMode
+import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.event.Event
 import net.minestom.server.event.EventNode
@@ -21,35 +31,45 @@ import net.minestom.server.extensions.Extension
 import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.instance.block.Block
+import net.minestom.server.inventory.Inventory
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
 import world.cepi.kstom.Manager
 import world.cepi.kstom.command.register
+import world.cepi.kstom.command.unregister
 import world.cepi.kstom.event.listenOnly
+import world.cepi.kstom.util.clone
 
 class LobbyExtension : Extension() {
 
     companion object {
+        val mini = MiniMessage.get()
+
         val occupiedSeats = mutableSetOf<Point>()
         val armourStandSeatMap = HashMap<Entity, Point>()
+        val playerMusicInvMap = HashMap<Player, Inventory>()
 
-        val spawnPosition = Pos(0.5, 65.0, 0.5)
+        val spawnPosition = Pos(0.5, 65.0, 0.5, 180f, 0f)
         lateinit var lobbyInstance: InstanceContainer
 
         lateinit var extensionEventNode: EventNode<Event>
-
-        lateinit var lightsOutGame: LightsOut
     }
 
     override fun initialize() {
+        Manager.block.registerHandler("minecraft:sign") { SignHandler }
+        Manager.block.registerHandler("minecraft:campfire") { CampfireHandler }
+        Manager.block.registerHandler("minecraft:skull") { SkullHandler }
+
         lobbyInstance = Manager.instance.createInstanceContainer()
         lobbyInstance.chunkLoader = AnvilLoader("lobby")
         lobbyInstance.chunkGenerator = VoidGenerator
 
         extensionEventNode = eventNode
 
+        MusicPlayerInventory.init()
         SpawnCommand.register()
+        DiscCommand.register()
 
         GameManager.registerGame<LightsOut>(
             GameTypeInfo(
@@ -68,16 +88,15 @@ class LobbyExtension : Extension() {
             )
         )
 
-        lightsOutGame = LightsOut(GameOptions(
-            { lobbyInstance },
-            Integer.MAX_VALUE,
-            Integer.MAX_VALUE,
-            joinableMidGame = true,
-            autoRejoin = false,
-            hasScoreboard = false
-        ))
+        eventNode.listenOnly<AdvancementTabEvent> {
 
-        lightsOutGame.start()
+            Advancement()
+            this.player.closeInventory()
+
+            val message = mini.parse("<green>Thanks for your interest!</green> <gray>Click to join our Discord</gray>")
+
+            this.player.sendMessage(message)
+        }
 
         eventNode.listenOnly<EntityPotionAddEvent> {
             if (potion.effect == PotionEffect.GLOWING) {
@@ -93,13 +112,26 @@ class LobbyExtension : Extension() {
         eventNode.listenOnly<PlayerLoginEvent> {
             setSpawningInstance(lobbyInstance)
             player.respawnPoint = spawnPosition
+
+            playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (spawnInstance != lobbyInstance) {
 
-                lightsOutGame.removePlayer(player)
             } else {
-                lightsOutGame.addPlayer(player)
+
+                val game = player.joinGameOrNew<LightsOut>(GameOptions(
+                    { lobbyInstance },
+                    1,
+                    Integer.MAX_VALUE, // We want to handle starting the game ourselves
+                    joinableMidGame = true,
+                    autoRejoin = false,
+                    hasScoreboard = false
+                ))
+
+                game.start()
+
+                player.respawnPoint = spawnPosition
                 player.gameMode = GameMode.ADVENTURE
 
             }
@@ -115,9 +147,6 @@ class LobbyExtension : Extension() {
             if (lobbyInstance.getBlock(newPosition.sub(0.0, 1.0, 0.0)).compare(Block.SLIME_BLOCK)) {
                 player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10))
             }
-        }
-        eventNode.listenOnly<PlayerDisconnectEvent> {
-            lightsOutGame.removePlayer(player)
         }
 
         eventNode.listenOnly<PlayerPacketEvent> {
@@ -176,6 +205,9 @@ class LobbyExtension : Extension() {
     }
 
     override fun terminate() {
+        SpawnCommand.unregister()
+        DiscCommand.unregister()
+
         logger.info("[LobbyExtension] Terminated!")
     }
 

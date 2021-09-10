@@ -2,6 +2,7 @@ package emortal.lobby.commands
 
 import emortal.lobby.LobbyExtension
 import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.title.Title
 import net.minestom.server.command.builder.Command
 import world.cepi.kstom.Manager
@@ -14,6 +15,8 @@ object SpawnCommand : Command("spawn", "lobby", "hub", "l") {
             if (!sender.isPlayer) return@setDefaultExecutor
 
             val player = sender.asPlayer()
+
+            player.sendActionBar(Component.text("Joining lobby...", NamedTextColor.GREEN))
 
             player.showTitle(
                 Title.title(
