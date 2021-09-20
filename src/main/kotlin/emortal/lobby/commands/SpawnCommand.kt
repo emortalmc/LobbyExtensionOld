@@ -1,6 +1,7 @@
 package emortal.lobby.commands
 
 import emortal.lobby.LobbyExtension
+import emortal.lobby.LobbyExtension.Companion.SPAWN_POINT
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.title.Title
@@ -32,9 +33,10 @@ object SpawnCommand : Command("spawn", "lobby", "hub", "l") {
 
             Manager.scheduler.buildTask {
                 if (player.instance!! != LobbyExtension.lobbyInstance) {
-                    player.setInstance(LobbyExtension.lobbyInstance, LobbyExtension.spawnPosition)
+                    player.respawnPoint = LobbyExtension.SPAWN_POINT
+                    player.setInstance(LobbyExtension.lobbyInstance, LobbyExtension.SPAWN_POINT)
                 } else {
-                    player.teleport(LobbyExtension.spawnPosition)
+                    player.teleport(LobbyExtension.SPAWN_POINT)
                 }
             }.delay(Duration.ofMillis(500)).schedule()
         }

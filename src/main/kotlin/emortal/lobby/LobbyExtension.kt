@@ -50,7 +50,7 @@ class LobbyExtension : Extension() {
         val armourStandSeatMap = HashMap<Entity, Point>()
         val playerMusicInvMap = HashMap<Player, Inventory>()
 
-        val spawnPosition = Pos(0.5, 65.0, 0.5, 180f, 0f)
+        val SPAWN_POINT = Pos(0.5, 65.0, 0.5, 180f, 0f)
         lateinit var lobbyInstance: InstanceContainer
 
         lateinit var extensionEventNode: EventNode<Event>
@@ -88,16 +88,6 @@ class LobbyExtension : Extension() {
             )
         )
 
-        eventNode.listenOnly<AdvancementTabEvent> {
-
-            Advancement()
-            this.player.closeInventory()
-
-            val message = mini.parse("<green>Thanks for your interest!</green> <gray>Click to join our Discord</gray>")
-
-            this.player.sendMessage(message)
-        }
-
         eventNode.listenOnly<EntityPotionAddEvent> {
             if (potion.effect == PotionEffect.GLOWING) {
                 entity.isGlowing = true
@@ -111,7 +101,7 @@ class LobbyExtension : Extension() {
 
         eventNode.listenOnly<PlayerLoginEvent> {
             setSpawningInstance(lobbyInstance)
-            player.respawnPoint = spawnPosition
+            player.respawnPoint = SPAWN_POINT
 
             playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
@@ -131,7 +121,7 @@ class LobbyExtension : Extension() {
 
                 game.start()
 
-                player.respawnPoint = spawnPosition
+                player.respawnPoint = SPAWN_POINT
                 player.gameMode = GameMode.ADVENTURE
 
             }
