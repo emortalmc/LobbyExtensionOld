@@ -1,18 +1,17 @@
-package emortal.lobby.inventories
+package dev.emortal.lobby.inventories
 
-import emortal.lobby.util.MusicDisc
+import dev.emortal.lobby.util.MusicDisc
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
-import net.kyori.adventure.text.minimessage.MiniMessage
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
 import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
+import world.cepi.kstom.adventure.asMini
 
 object MusicPlayerInventory {
-    val mini = MiniMessage.get()
     val inventory = init()
 
     fun init(): Inventory {
@@ -62,7 +61,7 @@ object MusicPlayerInventory {
             player.chat("/disc ${nowPlayingDisc.shortName}")
 
             inventory.title = inventoryTitle.append(
-                mini.parse("  <gray>Playing: <aqua>${nowPlayingDisc.description}</aqua>")
+                "  <gray>Playing: <aqua>${nowPlayingDisc.description}</aqua>".asMini()
             )
         }
 

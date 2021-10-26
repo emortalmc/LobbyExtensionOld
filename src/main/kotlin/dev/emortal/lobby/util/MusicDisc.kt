@@ -1,4 +1,4 @@
-package emortal.lobby.util
+package dev.emortal.lobby.util
 
 import net.minestom.server.item.Material
 import net.minestom.server.sound.SoundEvent

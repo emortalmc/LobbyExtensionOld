@@ -1,4 +1,4 @@
-package emortal.lobby.blockhandler
+package dev.emortal.lobby.blockhandler
 
 import net.kyori.adventure.key.Key
 import net.minestom.server.instance.block.BlockHandler

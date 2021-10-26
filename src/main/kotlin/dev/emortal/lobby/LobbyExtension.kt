@@ -1,19 +1,12 @@
-package emortal.lobby
+package dev.emortal.lobby
 
-import emortal.immortal.game.GameManager
-import emortal.immortal.game.GameManager.joinGameOrNew
-import emortal.immortal.game.GameOptions
-import emortal.immortal.game.GameTypeInfo
-import emortal.immortal.util.VoidGenerator
-import emortal.lobby.blockhandler.CampfireHandler
-import emortal.lobby.blockhandler.SignHandler
-import emortal.lobby.blockhandler.SkullHandler
-import emortal.lobby.commands.DiscCommand
-import emortal.lobby.commands.SpawnCommand
-import emortal.lobby.games.LightsOut
-import emortal.lobby.inventories.MusicPlayerInventory
-import net.kyori.adventure.text.minimessage.MiniMessage
-import net.minestom.server.advancements.Advancement
+import dev.emortal.immortal.util.VoidGenerator
+import dev.emortal.lobby.blockhandler.CampfireHandler
+import dev.emortal.lobby.blockhandler.SignHandler
+import dev.emortal.lobby.blockhandler.SkullHandler
+import dev.emortal.lobby.commands.DiscCommand
+import dev.emortal.lobby.commands.SpawnCommand
+import dev.emortal.lobby.inventories.MusicPlayerInventory
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
@@ -44,8 +37,6 @@ import world.cepi.kstom.util.clone
 class LobbyExtension : Extension() {
 
     companion object {
-        val mini = MiniMessage.get()
-
         val occupiedSeats = mutableSetOf<Point>()
         val armourStandSeatMap = HashMap<Entity, Point>()
         val playerMusicInvMap = HashMap<Player, Inventory>()
@@ -71,22 +62,7 @@ class LobbyExtension : Extension() {
         SpawnCommand.register()
         DiscCommand.register()
 
-        GameManager.registerGame<LightsOut>(
-            GameTypeInfo(
-                eventNode,
-                "lightsout",
-                null,
-                false,
-                GameOptions(
-                    { lobbyInstance },
-                    Integer.MAX_VALUE,
-                    Integer.MAX_VALUE,
-                    joinableMidGame = true,
-                    autoRejoin = false,
-                    hasScoreboard = false
-                )
-            )
-        )
+        // TODO: Bossbar
 
         eventNode.listenOnly<EntityPotionAddEvent> {
             if (potion.effect == PotionEffect.GLOWING) {
@@ -110,17 +86,6 @@ class LobbyExtension : Extension() {
 
             } else {
 
-                val game = player.joinGameOrNew<LightsOut>(GameOptions(
-                    { lobbyInstance },
-                    1,
-                    Integer.MAX_VALUE, // We want to handle starting the game ourselves
-                    joinableMidGame = true,
-                    autoRejoin = false,
-                    hasScoreboard = false
-                ))
-
-                game.start()
-
                 player.respawnPoint = SPAWN_POINT
                 player.gameMode = GameMode.ADVENTURE
 
@@ -132,7 +97,7 @@ class LobbyExtension : Extension() {
                 player.addEffect(Potion(PotionEffect.LEVITATION, 25, 3))
             }
             if (lobbyInstance.getBlock(newPosition).compare(Block.CAVE_VINES_PLANT)) {
-                player.addEffect(Potion(PotionEffect.GLOWING, 0, 3*20))
+                player.addEffect(Potion(PotionEffect.GLOWING, 0, 3 * 20))
             }
             if (lobbyInstance.getBlock(newPosition.sub(0.0, 1.0, 0.0)).compare(Block.SLIME_BLOCK)) {
                 player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10))
@@ -177,12 +142,13 @@ class LobbyExtension : Extension() {
                 armourStandMeta.setNotifyAboutChanges(true)
 
                 val spawnPos = blockPosition.add(0.5, 0.3, 0.5)
-                var yaw = 0f
                 val facing = block.getProperty("facing")
-
-                if (facing == "east") yaw = 90f
-                if (facing == "south") yaw = 180f
-                if (facing == "west") yaw = -90f
+                val yaw = when (facing) {
+                    "east" -> 90f
+                    "south" -> 180f
+                    "west" -> -90f
+                    else -> 0f
+                }
 
                 armourStand.setInstance(lobbyInstance, Pos(spawnPos).withYaw(yaw))
                 armourStand.addPassenger(player)
