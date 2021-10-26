@@ -25,7 +25,9 @@ object MusicPlayerInventory {
             if ((i + 1) % 9 == 0) i += 2
 
             itemStacks[i] = ItemStack.builder(disc.material)
-                .displayName(Component.text(disc.description, NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false))
+                .displayName(
+                    Component.text(disc.description, NamedTextColor.AQUA).decoration(TextDecoration.ITALIC, false)
+                )
                 .meta {
                     // For some reason the disc author lore requires this hide flag
                     it.hideFlag(ItemHideFlag.HIDE_POTION_EFFECTS)
@@ -38,7 +40,9 @@ object MusicPlayerInventory {
 
 
         itemStacks[40] = ItemStack.builder(Material.BARRIER)
-            .displayName(Component.text("STOP", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false))
+            .displayName(
+                Component.text("STOP", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false)
+            )
             .build()
 
         inventory.copyContents(itemStacks)
@@ -46,7 +50,6 @@ object MusicPlayerInventory {
 
         inventory.addInventoryCondition { player, slot, clickType, inventoryConditionResult ->
             inventoryConditionResult.isCancel = true
-            //inventoryConditionResult.cursorItem = ItemStack.AIR
 
             if (inventoryConditionResult.clickedItem == ItemStack.AIR) return@addInventoryCondition
 

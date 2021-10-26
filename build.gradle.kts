@@ -37,7 +37,7 @@ dependencies {
     compileOnly(kotlin("reflect"))
 
     compileOnly("com.github.Minestom:Minestom:f86d91f9b8")
-    compileOnly("com.github.EmortalMC:Immortal:03e26f8bf1")
+    compileOnly("com.github.EmortalMC:Immortal:5b55359a0d")
 
     // import kotlinx serialization
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2")

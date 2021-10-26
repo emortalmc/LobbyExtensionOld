@@ -1,45 +1,28 @@
 package dev.emortal.lobby.commands
 
-import dev.emortal.lobby.LobbyExtension
+import dev.emortal.immortal.game.GameManager
+import dev.emortal.immortal.game.GameManager.joinGameOrNew
 import dev.emortal.lobby.LobbyExtension.Companion.SPAWN_POINT
-import net.kyori.adventure.text.Component
-import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.title.Title
-import net.minestom.server.command.builder.Command
+import dev.emortal.lobby.games.LobbyGame
 import world.cepi.kstom.Manager
+import world.cepi.kstom.command.kommand.Kommand
 import java.time.Duration
 
-object SpawnCommand : Command("spawn", "lobby", "hub", "l") {
+object SpawnCommand : Kommand({
 
-    init {
-        setDefaultExecutor { sender, _ ->
-            if (!sender.isPlayer) return@setDefaultExecutor
+    onlyPlayers
 
-            val player = sender.asPlayer()
+    default {
+        if (!sender.isPlayer) return@default
 
-            player.sendActionBar(Component.text("Joining lobby...", NamedTextColor.GREEN))
+        val player = sender.asPlayer()
 
-            player.showTitle(
-                Title.title(
-                    Component.text("\uE00A"),
-                    Component.empty(),
-                    Title.Times.of(
-                        Duration.ofMillis(500),
-                        Duration.ofMillis(250),
-                        Duration.ofMillis(500)
-                    )
-                )
-            )
-
-            Manager.scheduler.buildTask {
-                if (player.instance!! != LobbyExtension.lobbyInstance) {
-                    player.respawnPoint = SPAWN_POINT
-                    player.setInstance(LobbyExtension.lobbyInstance, SPAWN_POINT)
-                } else {
-                    player.teleport(SPAWN_POINT)
-                }
-            }.delay(Duration.ofMillis(500)).schedule()
-        }
+        Manager.scheduler.buildTask {
+            if (player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
+                player.teleport(SPAWN_POINT)
+            } else {
+                player.joinGameOrNew<LobbyGame>()
+            }
+        }.delay(Duration.ofMillis(500)).schedule()
     }
-
-}
+}, "spawn", "lobby", "hub", "l")

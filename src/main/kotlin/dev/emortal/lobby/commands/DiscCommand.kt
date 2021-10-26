@@ -37,7 +37,7 @@ object DiscCommand : Kommand({
     }
 
     val discArgument = ArgumentType.String("disc").suggest {
-        val list = mutableListOf<String>("stop")
+        val list = mutableListOf("stop")
         list.addAll(MusicDisc.values().map { it.shortName })
         list
     }
