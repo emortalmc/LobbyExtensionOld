@@ -26,6 +26,9 @@ import world.cepi.kstom.Manager
 import world.cepi.kstom.event.listenOnly
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
+    // TODO: Bossbar
+    // TODO: Game selector + cool npc thing
+
     override fun gameStarted() {
     }
 

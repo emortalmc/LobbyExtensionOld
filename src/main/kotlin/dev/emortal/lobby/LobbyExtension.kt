@@ -63,9 +63,6 @@ class LobbyExtension : Extension() {
         SpawnCommand.register()
         DiscCommand.register()
 
-        // TODO: Bossbar
-
-
         logger.info("[LobbyExtension] Initialized!")
     }
 
