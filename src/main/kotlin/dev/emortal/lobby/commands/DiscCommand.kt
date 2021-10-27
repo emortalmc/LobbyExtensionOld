@@ -50,6 +50,8 @@ object DiscCommand : Kommand({
         val discValues = MusicDisc.values()
         val playingDisc = player.getTag(DiscCommand.playingDiscTag)?.let { discValues[it] }
 
+        println("Playing disk: ${playingDisc}")
+
         playingDisc?.sound?.let {
             player.stopSound(SoundStop.named(it))
             player.removeTag(DiscCommand.playingDiscTag)
@@ -60,7 +62,7 @@ object DiscCommand : Kommand({
         val nowPlayingDisc = MusicDisc.valueOf("MUSIC_DISC_${disc.uppercase()}")
         player.setTag(DiscCommand.playingDiscTag, discValues.indexOf(nowPlayingDisc))
 
-        player.playSound(Sound.sound(playingDisc!!.sound, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
+        player.playSound(Sound.sound(nowPlayingDisc.sound, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
         player.sendActionBar("<gray>Playing: <aqua>${nowPlayingDisc.description}</aqua>".asMini())
 
         DiscCommand.stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
