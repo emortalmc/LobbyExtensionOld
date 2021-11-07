@@ -17,10 +17,11 @@ import world.cepi.kstom.command.kommand.Kommand
 import java.time.Duration
 
 object DiscCommand : Kommand({
+
+    onlyPlayers
+
     // If no arguments given, open inventory
     default {
-        if (!sender.isPlayer) return@default
-
         val player = sender.asPlayer()
 
         val playingDisc = player.getTag(DiscCommand.playingDiscTag)?.let { MusicDisc.values()[it] }

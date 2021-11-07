@@ -3,10 +3,9 @@ package dev.emortal.lobby
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.joinGameOrNew
 import dev.emortal.immortal.game.GameOptions
-import dev.emortal.lobby.blockhandler.CampfireHandler
-import dev.emortal.lobby.blockhandler.SignHandler
-import dev.emortal.lobby.blockhandler.SkullHandler
 import dev.emortal.lobby.commands.DiscCommand
+import dev.emortal.lobby.commands.PingCommand
+import dev.emortal.lobby.commands.SitCommand
 import dev.emortal.lobby.commands.SpawnCommand
 import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.inventories.MusicPlayerInventory
@@ -18,7 +17,6 @@ import net.minestom.server.entity.Player
 import net.minestom.server.event.player.PlayerLoginEvent
 import net.minestom.server.extensions.Extension
 import net.minestom.server.inventory.Inventory
-import world.cepi.kstom.Manager
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.clone
 
@@ -41,13 +39,14 @@ class LobbyExtension : Extension() {
             playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
 
+
         GameManager.registerGame<LobbyGame>(
             eventNode,
             "lobby",
             Component.empty(),
             true,
             GameOptions(
-                maxPlayers = Integer.MAX_VALUE,
+                maxPlayers = 50,
                 minPlayers = 0,
                 countdownSeconds = 0,
                 canJoinDuringGame = true,
@@ -55,20 +54,20 @@ class LobbyExtension : Extension() {
             )
         )
 
-        Manager.block.registerHandler("minecraft:sign") { SignHandler }
-        Manager.block.registerHandler("minecraft:campfire") { CampfireHandler }
-        Manager.block.registerHandler("minecraft:skull") { SkullHandler }
-
         MusicPlayerInventory.init()
-        SpawnCommand.register()
         DiscCommand.register()
+        PingCommand.register()
+        SpawnCommand.register()
+        SitCommand.register()
 
         logger.info("[LobbyExtension] Initialized!")
     }
 
     override fun terminate() {
-        SpawnCommand.unregister()
         DiscCommand.unregister()
+        PingCommand.unregister()
+        SpawnCommand.unregister()
+        SitCommand.unregister()
 
         logger.info("[LobbyExtension] Terminated!")
     }

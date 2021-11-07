@@ -2,7 +2,6 @@ package dev.emortal.lobby.games
 
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.GameOptions
-import dev.emortal.immortal.util.VoidGenerator
 import dev.emortal.lobby.LobbyExtension
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
@@ -36,16 +35,18 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     }
 
     override fun playerJoin(player: Player) {
+        player.respawnPoint = LobbyExtension.SPAWN_POINT
+
         // Can cause random unexpected issues due to players joining
         // inside the PlayerLoginEvent
         player.scheduleNextTick {
-            player.respawnPoint = LobbyExtension.SPAWN_POINT
             player.gameMode = GameMode.ADVENTURE
             player.inventory.clear()
         }
     }
 
     override fun playerLeave(player: Player) {
+        LobbyExtension.playerMusicInvMap.remove(player)
     }
 
     override fun registerEvents() {
@@ -61,6 +62,8 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         }
 
         eventNode.listenOnly<PlayerMoveEvent> {
+            if (player.position.y < -5) player.teleport(LobbyExtension.SPAWN_POINT)
+
             if (instance.getBlock(newPosition).compare(Block.RAIL)) {
                 player.addEffect(Potion(PotionEffect.LEVITATION, 25, 3))
             }
@@ -104,6 +107,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                 armourStandMeta.isMarker = true
                 armourStandMeta.isInvisible = true
                 armourStandMeta.setNotifyAboutChanges(true)
+                armourStand.setNoGravity(true)
 
                 val spawnPos = blockPosition.add(0.5, 0.3, 0.5)
                 val yaw = when (block.getProperty("facing")) {
@@ -113,7 +117,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                     else -> 0f
                 }
 
-                armourStand.setInstance(instance, Pos(spawnPos).withYaw(yaw))
+                armourStand.setInstance(instance, Pos(spawnPos, yaw, 0f))
                 armourStand.addPassenger(player)
 
                 LobbyExtension.armourStandSeatMap[armourStand] = blockPosition
@@ -124,7 +128,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     override fun instanceCreate(): Instance {
         val instance = Manager.instance.createInstanceContainer()
         instance.chunkLoader = AnvilLoader("lobby")
-        instance.chunkGenerator = VoidGenerator
         return instance
     }
 }
