@@ -48,7 +48,7 @@ object MusicPlayerInventory {
         inventory.copyContents(itemStacks)
 
 
-        inventory.addInventoryCondition { player, slot, clickType, inventoryConditionResult ->
+        inventory.addInventoryCondition { player, slot, _, inventoryConditionResult ->
             inventoryConditionResult.isCancel = true
 
             if (inventoryConditionResult.clickedItem == ItemStack.AIR) return@addInventoryCondition

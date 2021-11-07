@@ -3,6 +3,7 @@ package dev.emortal.lobby
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.joinGameOrNew
 import dev.emortal.immortal.game.GameOptions
+import dev.emortal.immortal.game.WhenToRegisterEvents
 import dev.emortal.lobby.commands.DiscCommand
 import dev.emortal.lobby.commands.PingCommand
 import dev.emortal.lobby.commands.SitCommand
@@ -45,6 +46,7 @@ class LobbyExtension : Extension() {
             "lobby",
             Component.empty(),
             true,
+            WhenToRegisterEvents.IMMEDIATELY,
             GameOptions(
                 maxPlayers = 50,
                 minPlayers = 0,
