@@ -27,7 +27,7 @@ object DiscCommand : Kommand({
         val playingDisc = player.getTag(DiscCommand.playingDiscTag)?.let { MusicDisc.values()[it] }
         val musicPlayerInventory = LobbyExtension.playerMusicInvMap[player] ?: return@default
 
-        val playingText = Component.text("\uF808\uE00B", NamedTextColor.WHITE)
+        val playingText = Component.text("", NamedTextColor.WHITE)
         if (playingDisc != null) playingText.append(
             "  <gray>Playing: <aqua>${playingDisc.description}</aqua>".asMini()
         )
@@ -48,8 +48,6 @@ object DiscCommand : Kommand({
         val disc = context.get(discArgument)
         val discValues = MusicDisc.values()
         val playingDisc = player.getTag(DiscCommand.playingDiscTag)?.let { discValues[it] }
-
-        println("Playing disk: ${playingDisc}")
 
         playingDisc?.sound?.let {
             player.stopSound(SoundStop.named(it))

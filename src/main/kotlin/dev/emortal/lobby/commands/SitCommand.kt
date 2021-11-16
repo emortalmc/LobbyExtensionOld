@@ -15,6 +15,12 @@ object SitCommand : Kommand({
 
     onlyPlayers
 
+    condition {
+        if (!sender.isPlayer) return@condition false
+        else if (!sender.asPlayer().instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) return@condition false
+        return@condition true
+    }
+
     default {
         if (!player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
             player.sendActionBar(Component.text("Not in a lobby!", NamedTextColor.RED))
@@ -64,4 +70,4 @@ object SitCommand : Kommand({
         LobbyExtension.armourStandSeatMap[armourStand] = roundedPos
     }
 
-}, "sit", "takeaseat")
+}, "sit")

@@ -3,11 +3,11 @@ package dev.emortal.lobby.games
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.GameOptions
 import dev.emortal.lobby.LobbyExtension
+import dev.emortal.lobby.inventories.GameSelectorInventory
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.event.entity.EntityPotionAddEvent
@@ -15,9 +15,12 @@ import net.minestom.server.event.entity.EntityPotionRemoveEvent
 import net.minestom.server.event.player.PlayerBlockInteractEvent
 import net.minestom.server.event.player.PlayerMoveEvent
 import net.minestom.server.event.player.PlayerPacketEvent
+import net.minestom.server.event.player.PlayerUseItemEvent
 import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
+import net.minestom.server.item.ItemStack
+import net.minestom.server.item.Material
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
@@ -40,8 +43,10 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         // Can cause random unexpected issues due to players joining
         // inside the PlayerLoginEvent
         player.scheduleNextTick {
-            player.gameMode = GameMode.ADVENTURE
-            player.inventory.clear()
+
+            val compassItemStack = ItemStack.of(Material.COMPASS)
+
+            player.inventory.setItemStack(0, compassItemStack)
         }
     }
 
@@ -50,6 +55,12 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     }
 
     override fun registerEvents() {
+        eventNode.listenOnly<PlayerUseItemEvent> {
+            if (itemStack.material == Material.COMPASS) {
+                player.openInventory(GameSelectorInventory.inventory)
+            }
+        }
+
         eventNode.listenOnly<EntityPotionAddEvent> {
             if (potion.effect == PotionEffect.GLOWING) {
                 entity.isGlowing = true
@@ -96,6 +107,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         eventNode.listenOnly<PlayerBlockInteractEvent> {
             if (block.name().contains("stair", true)) {
                 if (player.vehicle != null) return@listenOnly
+                if (LobbyExtension.occupiedSeats.contains(blockPosition)) return@listenOnly
 
                 LobbyExtension.occupiedSeats.add(blockPosition)
 
