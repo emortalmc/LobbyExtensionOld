@@ -2,11 +2,11 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     // Apply the Kotlin JVM plugin to add support for Kotlin.
-    id("org.jetbrains.kotlin.jvm") version "1.5.21"
+    id("org.jetbrains.kotlin.jvm") version "1.6.0"
     // Kotlinx serialization for any data format
-    kotlin("plugin.serialization") version "1.4.21"
+    kotlin("plugin.serialization") version "1.6.0"
     // Shade the plugin
-    id("com.github.johnrengelman.shadow") version "7.0.0"
+    id("com.github.johnrengelman.shadow") version "7.1.0"
     // Allow publishing
     `maven-publish`
 
@@ -37,7 +37,7 @@ dependencies {
     compileOnly(kotlin("reflect"))
 
     compileOnly("com.github.Minestom:Minestom:5734097789")
-    compileOnly("com.github.EmortalMC:Immortal:cd8a42d748")
+    compileOnly("com.github.EmortalMC:Immortal:50c7b05bb1")
 
     // import kotlinx serialization
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2")
@@ -83,7 +83,7 @@ java {
 }
 
 val compileKotlin: KotlinCompile by tasks
-compileKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_16.toString()
+compileKotlin.kotlinOptions.jvmTarget = JavaVersion.VERSION_17.toString()
 
 compileKotlin.kotlinOptions {
     freeCompilerArgs = listOf("-Xinline-classes")

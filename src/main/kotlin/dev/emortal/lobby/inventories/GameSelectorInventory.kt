@@ -22,11 +22,11 @@ object GameSelectorInventory {
         // TODO: Add player count of the game to lore
         LobbyExtension.gameListingConfig.gameListings.forEach {
             val loreList = it.value.description.toMutableList()
-            loreList.addAll(listOf("", "<dark_gray>▶ ${GameManager.registeredGameMap}"))
+            loreList.addAll(listOf("", "<green>● <bold>${GameManager.gameMap[it.key]?.size ?: 0}</bold> playing"))
 
             itemStacks[it.value.slot] = ItemStack.builder(it.value.item)
                 .displayName(it.value.name.asMini().decoration(TextDecoration.ITALIC, false))
-                .lore(loreList.map { loreLine -> loreLine.asMini() })
+                .lore(loreList.map { loreLine -> loreLine.asMini().decoration(TextDecoration.ITALIC, false) })
                 .meta { meta ->
                     meta.setTag(GameManager.gameNameTag, it.key)
                     meta
@@ -37,7 +37,7 @@ object GameSelectorInventory {
 
         inventory.copyContents(itemStacks)
 
-        inventory.addInventoryCondition { player, slot, _, inventoryConditionResult ->
+        inventory.addInventoryCondition { player, _, _, inventoryConditionResult ->
             inventoryConditionResult.isCancel = true
 
             if (inventoryConditionResult.clickedItem == ItemStack.AIR) return@addInventoryCondition

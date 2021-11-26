@@ -40,6 +40,8 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     override fun playerJoin(player: Player) {
         player.respawnPoint = LobbyExtension.SPAWN_POINT
 
+        ArrayList<String>().add("a")
+
         // Can cause random unexpected issues due to players joining
         // inside the PlayerLoginEvent
         player.scheduleNextTick {
@@ -73,7 +75,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         }
 
         eventNode.listenOnly<PlayerMoveEvent> {
-            if (player.position.y < -5) player.teleport(LobbyExtension.SPAWN_POINT)
+            if (newPosition.y < -5) player.teleport(LobbyExtension.SPAWN_POINT)
 
             if (instance.getBlock(newPosition).compare(Block.RAIL)) {
                 player.addEffect(Potion(PotionEffect.LEVITATION, 25, 3))
