@@ -78,13 +78,13 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             if (newPosition.y < -5) player.teleport(LobbyExtension.SPAWN_POINT)
 
             if (instance.getBlock(newPosition).compare(Block.RAIL)) {
-                player.addEffect(Potion(PotionEffect.LEVITATION, 25, 3))
+                player.addEffect(Potion(PotionEffect.LEVITATION, 25, 3, 0))
             }
             if (instance.getBlock(newPosition).compare(Block.CAVE_VINES_PLANT)) {
-                player.addEffect(Potion(PotionEffect.GLOWING, 0, 3 * 20))
+                player.addEffect(Potion(PotionEffect.GLOWING, 0, 3 * 20, 0))
             }
             if (instance.getBlock(newPosition.sub(0.0, 1.0, 0.0)).compare(Block.SLIME_BLOCK)) {
-                player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10))
+                player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
             }
         }
 

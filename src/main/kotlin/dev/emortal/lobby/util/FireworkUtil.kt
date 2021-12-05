@@ -39,9 +39,7 @@ object FireworkUtil {
         meta.fireworkInfo = fireworkItemStack
         firework.setInstance(instance, position)
 
-        val fireworkExplodePacket = EntityStatusPacket()
-        fireworkExplodePacket.entityId = firework.entityId
-        fireworkExplodePacket.status = 17
+        val fireworkExplodePacket = EntityStatusPacket(firework.entityId, 17)
 
         PacketUtils.sendGroupedPacket(players, fireworkExplodePacket)
 

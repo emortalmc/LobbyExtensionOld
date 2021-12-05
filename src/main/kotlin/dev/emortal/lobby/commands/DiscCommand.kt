@@ -22,8 +22,6 @@ object DiscCommand : Kommand({
 
     // If no arguments given, open inventory
     default {
-        val player = sender.asPlayer()
-
         val playingDisc = player.getTag(DiscCommand.playingDiscTag)?.let { MusicDisc.values()[it] }
         val musicPlayerInventory = LobbyExtension.playerMusicInvMap[player] ?: return@default
 
@@ -42,9 +40,6 @@ object DiscCommand : Kommand({
     }
 
     syntax(discArgument) {
-        if (!sender.isPlayer) return@syntax
-
-        val player = sender.asPlayer()
         val disc = context.get(discArgument)
         val discValues = MusicDisc.values()
         val playingDisc = player.getTag(DiscCommand.playingDiscTag)?.let { discValues[it] }

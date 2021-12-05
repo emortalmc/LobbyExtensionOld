@@ -7,6 +7,8 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
+import net.minestom.server.item.ItemMeta
+import net.minestom.server.item.ItemMetaBuilder
 import net.minestom.server.item.ItemStack
 import world.cepi.kstom.adventure.asMini
 
@@ -27,7 +29,7 @@ object GameSelectorInventory {
             itemStacks[it.value.slot] = ItemStack.builder(it.value.item)
                 .displayName(it.value.name.asMini().decoration(TextDecoration.ITALIC, false))
                 .lore(loreList.map { loreLine -> loreLine.asMini().decoration(TextDecoration.ITALIC, false) })
-                .meta { meta ->
+                .meta<ItemMetaBuilder> { meta ->
                     meta.setTag(GameManager.gameNameTag, it.key)
                     meta
                 }

@@ -36,11 +36,11 @@ dependencies {
     // Use the Kotlin reflect library.
     compileOnly(kotlin("reflect"))
 
-    compileOnly("com.github.Minestom:Minestom:5734097789")
+    compileOnly("com.github.Minestom:Minestom:3843cacef5")
     compileOnly("com.github.EmortalMC:Immortal:50c7b05bb1")
 
     // import kotlinx serialization
-    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.2.2")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
 }
 
 tasks.withType<Test> {
