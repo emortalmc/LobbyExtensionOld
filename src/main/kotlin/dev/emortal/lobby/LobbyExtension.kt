@@ -120,6 +120,7 @@ class LobbyExtension : Extension() {
         RulesCommand.register()
         SpawnCommand.register()
         SitCommand.register()
+        VersionCommand.register()
 
         logger.info("[LobbyExtension] Initialized!")
     }
@@ -131,6 +132,7 @@ class LobbyExtension : Extension() {
         RulesCommand.unregister()
         SpawnCommand.unregister()
         SitCommand.unregister()
+        VersionCommand.unregister()
 
         logger.info("[LobbyExtension] Terminated!")
     }

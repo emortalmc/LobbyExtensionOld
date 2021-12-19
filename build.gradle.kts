@@ -36,8 +36,8 @@ dependencies {
     // Use the Kotlin reflect library.
     compileOnly(kotlin("reflect"))
 
-    compileOnly("com.github.Minestom:Minestom:3843cacef5")
-    compileOnly("com.github.EmortalMC:Immortal:50c7b05bb1")
+    compileOnly("com.github.emortaldev:Minestom:d25ea275e4")
+    compileOnly("com.github.EmortalMC:Immortal:fe7fb32d3d")
 
     // import kotlinx serialization
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")

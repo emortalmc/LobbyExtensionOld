@@ -1,6 +1,7 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.lobby.commands.PerformanceCommand.LAST_TICK
+import dev.emortal.lobby.util.armify
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
@@ -26,8 +27,9 @@ object PerformanceCommand : Kommand({
                 .append(Component.text("RAM Usage: ", NamedTextColor.GRAY))
                 .append(Component.text("${ramUsage}MB", NamedTextColor.GOLD))
                 .append(Component.text("\nTPS: ", NamedTextColor.GRAY))
-                .append(Component.text("${min(tps, 20)}", NamedTextColor.GOLD))
-                .append(Component.text(" (${tickMs}ms)", NamedTextColor.DARK_GRAY, TextDecoration.ITALIC))
+                .append(Component.text("${if (tps > 20) ">" else ""}${min(tps, 20)}", NamedTextColor.GOLD))
+                .append(Component.text(" (${floor(tickMs * 100) / 100}ms)", NamedTextColor.DARK_GRAY))
+                .armify()
         )
     }
 
