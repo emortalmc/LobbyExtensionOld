@@ -14,10 +14,10 @@ object SpawnCommand : Kommand({
     default {
         if (player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
             player.teleport(SPAWN_POINT)
-            player.playSound(Sound.sound(SoundEvent.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
         } else {
             player.joinGameOrNew("lobby")
-            player.playSound(Sound.sound(SoundEvent.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
         }
+        player.playSound(Sound.sound(SoundEvent.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
+
     }
 }, "spawn", "lobby", "hub", "l")

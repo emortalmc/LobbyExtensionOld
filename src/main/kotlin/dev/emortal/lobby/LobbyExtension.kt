@@ -10,19 +10,25 @@ import dev.emortal.lobby.config.GameListing
 import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.inventories.MusicPlayerInventory
+import dev.emortal.lobby.util.showFirework
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
+import net.minestom.server.MinecraftServer
+import net.minestom.server.color.Color
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.Entity
-import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
-import net.minestom.server.entity.metadata.other.AreaEffectCloudMeta
-import net.minestom.server.event.player.PlayerChatEvent
+import net.minestom.server.event.player.PlayerDisconnectEvent
 import net.minestom.server.event.player.PlayerLoginEvent
+import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
 import net.minestom.server.inventory.Inventory
-import net.minestom.server.timer.Task
+import net.minestom.server.item.firework.FireworkEffect
+import net.minestom.server.item.firework.FireworkEffectType
+import net.minestom.server.network.packet.server.play.TeamsPacket
+import net.minestom.server.scoreboard.TeamBuilder
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.event.listenOnly
@@ -36,8 +42,6 @@ class LobbyExtension : Extension() {
         val occupiedSeats = mutableSetOf<Point>()
         val armourStandSeatMap = hashMapOf<Entity, Point>()
         val playerMusicInvMap = hashMapOf<Player, Inventory>()
-
-        val chatHologramMap = hashMapOf<Player, Pair<Entity, Task>>()
 
         val SPAWN_POINT = Pos(0.5, 65.0, 0.5, 180f, 0f)
 
@@ -78,6 +82,8 @@ class LobbyExtension : Extension() {
             )
         )
 
+        MinecraftServer.setBrandName("§6Minestom ${MinecraftServer.VERSION_NAME}§r")
+
         eventNode.listenOnly<PlayerLoginEvent> {
             val game = player.joinGameOrNew("lobby")
             setSpawningInstance(game.instance)
@@ -86,37 +92,60 @@ class LobbyExtension : Extension() {
             playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
 
-        eventNode.listenOnly<PlayerChatEvent> {
-            chatHologramMap[player]?.first?.remove()
-            chatHologramMap[player]?.second?.cancel()
+        eventNode.listenOnly<PlayerSpawnEvent> {
+            if (isFirstSpawn) {
+                val rankPrefix = Component.text("MEMBER ", NamedTextColor.DARK_GRAY, TextDecoration.BOLD)
 
-            val entity = Entity(EntityType.AREA_EFFECT_CLOUD)
+                player.displayName = Component.text()
+                    .append(rankPrefix)
+                    .append(Component.text(player.username, NamedTextColor.GRAY))
+                    .build()
 
-            val meta = entity.entityMeta as AreaEffectCloudMeta
+                val team = TeamBuilder(player.username, Manager.team)
+                    .teamColor(NamedTextColor.GRAY)
+                    .prefix(rankPrefix)
+                    .collisionRule(TeamsPacket.CollisionRule.NEVER)
+                    .build()
 
-            val playerName = player.displayName ?: Component.text(player.username)
+                player.team = team
 
-            meta.radius = 0f
-            meta.isHasNoGravity = true
-            meta.customName = playerName.append(Component.text(": ")).append(Component.text(if (message.length > 20) message.take(17) + "..." else message))
-            meta.isCustomNameVisible = true
+                player.sendMessage(
+                    Component.text()
+                        .append(Component.text("Welcome, ", NamedTextColor.GRAY))
+                        .append(player.displayName!!)
+                        .append(Component.text(", to ", NamedTextColor.GRAY))
+                        .append("<bold><gradient:gold:light_purple>EmortalMC".asMini())
+                )
 
-            player.addPassenger(entity)
+                Manager.scheduler.buildTask {
 
-            val task = Manager.scheduler.buildTask {
-                entity.remove()
-                chatHologramMap.remove(player)
-            }.delay(Duration.ofSeconds(5)).schedule()
+                    player.showFirework(
+                        player.instance!!,
+                        player.position.add(0.0, 1.0, 0.0),
+                        mutableListOf(
+                            FireworkEffect(
+                                false,
+                                false,
+                                FireworkEffectType.LARGE_BALL,
+                                mutableListOf(Color(NamedTextColor.LIGHT_PURPLE)),
+                                mutableListOf(Color(NamedTextColor.GOLD))
+                            )
+                        )
+                    )
+                }.delay(Duration.ofMillis(500)).schedule()
 
-            chatHologramMap[player] = Pair(entity, task)
-
-
+                player.refreshLatency(0)
+                refreshTablist()
+            }
+        }
+        eventNode.listenOnly<PlayerDisconnectEvent> {
+            refreshTablist()
+            playerMusicInvMap.remove(player)
         }
 
         MusicPlayerInventory.init()
         DiscCommand.register()
         PerformanceCommand.register()
-        PingCommand.register()
         RulesCommand.register()
         SpawnCommand.register()
         SitCommand.register()
@@ -128,13 +157,31 @@ class LobbyExtension : Extension() {
     override fun terminate() {
         DiscCommand.unregister()
         PerformanceCommand.unregister()
-        PingCommand.unregister()
         RulesCommand.unregister()
         SpawnCommand.unregister()
         SitCommand.unregister()
         VersionCommand.unregister()
 
         logger.info("[LobbyExtension] Terminated!")
+    }
+
+    fun refreshTablist() {
+        Manager.connection.onlinePlayers.forEach {
+            it.sendPlayerListHeaderAndFooter(
+                Component.text()
+                    .append(Component.text("┌${" ".repeat(50)}", NamedTextColor.GOLD))
+                    .append(Component.text("┐ ", NamedTextColor.LIGHT_PURPLE))
+                    .append("\n<gradient:gold:light_purple><bold>EmortalMC".asMini())
+                    .append(Component.text("\n", NamedTextColor.GRAY)),
+                Component.text()
+                    .append(Component.text("\n ", NamedTextColor.GRAY))
+                    .append(Component.text("${Manager.connection.onlinePlayers.size} online", NamedTextColor.GRAY))
+                    .append(Component.text("  |  ", NamedTextColor.DARK_GRAY))
+                    .append(Component.text("${it.latency}ms", NamedTextColor.GREEN))
+                    .append(Component.text("\n└${" ".repeat(50)}", NamedTextColor.LIGHT_PURPLE))
+                    .append(Component.text("┘ ", NamedTextColor.GOLD))
+            )
+        }
     }
 
 }

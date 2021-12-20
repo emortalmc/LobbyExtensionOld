@@ -7,6 +7,7 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
+import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.block.Block
 import world.cepi.kstom.command.kommand.Kommand
@@ -16,7 +17,7 @@ object SitCommand : Kommand({
     onlyPlayers
 
     condition {
-        if (!sender.isPlayer) return@condition false
+        if (sender !is Player) return@condition false
         else if (!sender.asPlayer().instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) return@condition false
         return@condition true
     }

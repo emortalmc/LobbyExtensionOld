@@ -36,6 +36,7 @@ dependencies {
     // Use the Kotlin reflect library.
     compileOnly(kotlin("reflect"))
 
+    implementation("com.github.emortaldev:particable:e98f138cda")
     compileOnly("com.github.emortaldev:Minestom:d25ea275e4")
     compileOnly("com.github.EmortalMC:Immortal:fe7fb32d3d")
 

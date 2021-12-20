@@ -1,17 +1,27 @@
 package dev.emortal.lobby.games
 
 import dev.emortal.immortal.game.Game
+import dev.emortal.immortal.game.GameManager.joinGameOrNew
 import dev.emortal.immortal.game.GameOptions
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.inventories.GameSelectorInventory
+import dev.emortal.lobby.inventories.LecternGameSelectorInventory
+import net.kyori.adventure.sound.Sound
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
+import net.minestom.server.entity.metadata.other.AreaEffectCloudMeta
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.event.entity.EntityPotionAddEvent
 import net.minestom.server.event.entity.EntityPotionRemoveEvent
+import net.minestom.server.event.inventory.InventoryCloseEvent
+import net.minestom.server.event.inventory.InventoryPreClickEvent
+import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.PlayerBlockInteractEvent
 import net.minestom.server.event.player.PlayerMoveEvent
 import net.minestom.server.event.player.PlayerPacketEvent
@@ -19,19 +29,66 @@ import net.minestom.server.event.player.PlayerUseItemEvent
 import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
-import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
+import net.minestom.server.sound.SoundEvent
+import net.minestom.server.timer.Task
 import world.cepi.kstom.Manager
 import world.cepi.kstom.event.listenOnly
+import world.cepi.kstom.item.item
+import world.cepi.particle.Particle
+import world.cepi.particle.ParticleType
+import world.cepi.particle.data.OffsetAndSpeed
+import world.cepi.particle.extra.Dust
+import world.cepi.particle.showParticle
+import java.time.Duration
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     // TODO: Bossbar
     // TODO: Game selector + cool npc thing
 
+    var constantTask: Task? = null
+
+    companion object {
+        val gameSelectorPos = Pos(0.5, 69.5, -32.5, 180f, 0f)
+    }
+
     override fun gameStarted() {
+        val hologram = Entity(EntityType.AREA_EFFECT_CLOUD)
+        val holoMeta = hologram.entityMeta as AreaEffectCloudMeta
+
+        holoMeta.setNotifyAboutChanges(false)
+        holoMeta.radius = 0f
+        holoMeta.isHasNoGravity = true
+        holoMeta.isCustomNameVisible = true
+        holoMeta.customName = Component.text()
+            .append(Component.text("CLICK ME", NamedTextColor.GREEN, TextDecoration.BOLD))
+            .append(Component.text(" to select a game!", NamedTextColor.GRAY))
+            .build()
+        holoMeta.setNotifyAboutChanges(true)
+
+        hologram.setInstance(instance, gameSelectorPos)
+
+        var i = 0.0
+        constantTask = Manager.scheduler.buildTask {
+            showParticle(
+                Particle.Companion.particle(
+                    type = ParticleType.DUST,
+                    count = 0,
+                    data = OffsetAndSpeed(0f, -1f, 0f, 0.2f),
+                    extraData = Dust(1f, 0f, 1f, 1f)
+                ),
+                gameSelectorPos.asVec().add(sin(i), 0.0, cos(i))
+            )
+
+            i += 0.2
+            if (i > PI * 2) i = 0.0
+        }.repeat(Duration.ofMillis(50)).schedule()
     }
 
     override fun gameDestroyed() {
@@ -40,23 +97,31 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     override fun playerJoin(player: Player) {
         player.respawnPoint = LobbyExtension.SPAWN_POINT
 
-        ArrayList<String>().add("a")
-
         // Can cause random unexpected issues due to players joining
         // inside the PlayerLoginEvent
         player.scheduleNextTick {
+            val compassItemStack = item(Material.COMPASS) {
+                displayName(
+                    Component.text("Game Selector", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)
+                )
+            }
 
-            val compassItemStack = ItemStack.of(Material.COMPASS)
-
-            player.inventory.setItemStack(0, compassItemStack)
+            player.inventory.setItemStack(4, compassItemStack)
         }
     }
 
     override fun playerLeave(player: Player) {
-        LobbyExtension.playerMusicInvMap.remove(player)
+
     }
 
     override fun registerEvents() {
+        eventNode.listenOnly<ItemDropEvent> {
+            isCancelled = true
+        }
+        eventNode.listenOnly<InventoryPreClickEvent> {
+            isCancelled = true
+        }
+
         eventNode.listenOnly<PlayerUseItemEvent> {
             if (itemStack.material == Material.COMPASS) {
                 player.openInventory(GameSelectorInventory.inventory)
@@ -75,13 +140,19 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         }
 
         eventNode.listenOnly<PlayerMoveEvent> {
-            if (newPosition.y < -5) player.teleport(LobbyExtension.SPAWN_POINT)
+            if (newPosition.y < 0) player.teleport(LobbyExtension.SPAWN_POINT)
 
-            if (instance.getBlock(newPosition).compare(Block.RAIL)) {
-                player.addEffect(Potion(PotionEffect.LEVITATION, 25, 3, 0))
-            }
-            if (instance.getBlock(newPosition).compare(Block.CAVE_VINES_PLANT)) {
-                player.addEffect(Potion(PotionEffect.GLOWING, 0, 3 * 20, 0))
+            if (newPosition.distance(Pos(0.5, 70.0, -37.5)) < 2) {
+                val selectedGame = player.getTag(LecternGameSelectorInventory.selectedGameTag)
+                if (selectedGame == null) {
+                    player.sendActionBar(Component.text("You need to select a game first!", NamedTextColor.RED))
+                    player.playSound(Sound.sound(SoundEvent.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1f, 1f))
+                    player.velocity = Vec(0.0, 10.0, 20.0)
+                    return@listenOnly
+                }
+
+                player.joinGameOrNew(selectedGame)
+                player.removeTag(LecternGameSelectorInventory.selectedGameTag)
             }
             if (instance.getBlock(newPosition.sub(0.0, 1.0, 0.0)).compare(Block.SLIME_BLOCK)) {
                 player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
@@ -106,7 +177,26 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             }
         }
 
+        eventNode.listenOnly<InventoryCloseEvent> {
+            if (inventory == null) return@listenOnly
+
+            if (inventory!!.hasTag(LecternGameSelectorInventory.lecternInventoryTag)) {
+                player.playSound(
+                    Sound.sound(SoundEvent.BLOCK_GLASS_BREAK, Sound.Source.MASTER, 1f, 0.5f),
+                    Sound.Emitter.self()
+                )
+
+            }
+        }
+
         eventNode.listenOnly<PlayerBlockInteractEvent> {
+            if (block.compare(Block.LECTERN)) {
+                player.openInventory(LecternGameSelectorInventory.inventory)
+                player.playSound(
+                    Sound.sound(SoundEvent.BLOCK_RESPAWN_ANCHOR_CHARGE, Sound.Source.MASTER, 1f, 2f)
+                )
+            }
+
             if (block.name().contains("stair", true)) {
                 if (player.vehicle != null) return@listenOnly
                 if (LobbyExtension.occupiedSeats.contains(blockPosition)) return@listenOnly
