@@ -2,7 +2,6 @@ package dev.emortal.lobby.inventories
 
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.lobby.LobbyExtension
-import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.util.pointsBetween
 import dev.emortal.lobby.util.setBlock
 import net.kyori.adventure.sound.Sound
@@ -12,10 +11,6 @@ import net.kyori.adventure.text.format.TextDecoration
 import net.kyori.adventure.title.Title
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
-import net.minestom.server.entity.Entity
-import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.GameMode
-import net.minestom.server.entity.metadata.other.AreaEffectCloudMeta
 import net.minestom.server.instance.block.Block
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
@@ -69,25 +64,11 @@ object LecternGameSelectorInventory {
                 player.setTag(selectedGameTag, gameName)
                 player.closeInventory()
 
-                val lastPos = player.position
-                player.gameMode = GameMode.SPECTATOR
-
-                val hologram = Entity(EntityType.AREA_EFFECT_CLOUD)
-                val holoMeta = hologram.entityMeta as AreaEffectCloudMeta
-
-                holoMeta.setNotifyAboutChanges(false)
-                holoMeta.radius = 0f
-                holoMeta.isHasNoGravity = true
-                holoMeta.setNotifyAboutChanges(true)
-
-                hologram.setInstance(player.instance!!, LobbyGame.gameSelectorPos.add(0.0, 1.0, 0.0))
-                player.spectate(hologram)
-
                 portalPoints.forEach {
                     player.setBlock(it, Block.AIR)
                 }
 
-                player.playSound(Sound.sound(SoundEvent.BLOCK_PORTAL_TRIGGER, Sound.Source.MASTER, 1f, 1.5f))
+                player.playSound(Sound.sound(SoundEvent.BLOCK_PORTAL_TRIGGER, Sound.Source.MASTER, 1f, 2f))
                 player.showTitle(
                     Title.title(
                         Component.empty(),
@@ -115,17 +96,10 @@ object LecternGameSelectorInventory {
                         )
                     )
 
-                    Manager.scheduler.buildTask {
-                        player.stopSpectating()
-                        player.gameMode = GameMode.ADVENTURE
-                        player.teleport(lastPos)
-                        hologram.remove()
-                    }.delay(Duration.ofMillis(1000)).schedule()
-
                     portalPoints.forEach {
                         player.setBlock(it, Block.NETHER_PORTAL)
                     }
-                }.delay(Duration.ofMillis(3000)).schedule()
+                }.delay(Duration.ofMillis(1500)).schedule()
             }
         }
     }

@@ -182,7 +182,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
             if (inventory!!.hasTag(LecternGameSelectorInventory.lecternInventoryTag)) {
                 player.playSound(
-                    Sound.sound(SoundEvent.BLOCK_GLASS_BREAK, Sound.Source.MASTER, 1f, 0.5f),
+                    Sound.sound(SoundEvent.BLOCK_CHEST_CLOSE, Sound.Source.MASTER, 1f, 2f),
                     Sound.Emitter.self()
                 )
 
@@ -193,7 +193,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             if (block.compare(Block.LECTERN)) {
                 player.openInventory(LecternGameSelectorInventory.inventory)
                 player.playSound(
-                    Sound.sound(SoundEvent.BLOCK_RESPAWN_ANCHOR_CHARGE, Sound.Source.MASTER, 1f, 2f)
+                    Sound.sound(SoundEvent.BLOCK_CHEST_OPEN, Sound.Source.MASTER, 1f, 2f)
                 )
             }
 
