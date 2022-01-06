@@ -16,7 +16,8 @@ object MusicPlayerInventory {
     val inventory = init()
 
     fun init(): Inventory {
-        val inventoryTitle = Component.text("\uF808\uE00B", NamedTextColor.WHITE)
+        //val inventoryTitle = Component.text("\uF808\uE00B", NamedTextColor.WHITE)
+        val inventoryTitle = Component.text("Music Discs", NamedTextColor.BLACK)
         val inventory = Inventory(InventoryType.CHEST_6_ROW, inventoryTitle)
 
         val itemStacks = Array(inventory.size) { ItemStack.AIR }

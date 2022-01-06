@@ -99,7 +99,7 @@ object LecternGameSelectorInventory {
                     portalPoints.forEach {
                         player.setBlock(it, Block.NETHER_PORTAL)
                     }
-                }.delay(Duration.ofMillis(1500)).schedule()
+                }.delay(Duration.ofMillis(1800)).schedule()
             }
         }
     }

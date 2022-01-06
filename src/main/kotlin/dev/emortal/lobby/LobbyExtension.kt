@@ -1,7 +1,7 @@
 package dev.emortal.lobby
 
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.immortal.game.GameManager.joinGameOrNew
+import dev.emortal.immortal.game.GameManager.joinGame
 import dev.emortal.immortal.game.GameOptions
 import dev.emortal.immortal.game.WhenToRegisterEvents
 import dev.emortal.lobby.commands.*
@@ -20,6 +20,7 @@ import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.Player
+import net.minestom.server.entity.PlayerSkin
 import net.minestom.server.event.player.PlayerDisconnectEvent
 import net.minestom.server.event.player.PlayerLoginEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
@@ -71,7 +72,7 @@ class LobbyExtension : Extension() {
             eventNode,
             "lobby",
             Component.empty(),
-            true,
+            false,
             WhenToRegisterEvents.IMMEDIATELY,
             GameOptions(
                 maxPlayers = 50,
@@ -85,15 +86,22 @@ class LobbyExtension : Extension() {
         MinecraftServer.setBrandName("§6Minestom ${MinecraftServer.VERSION_NAME}§r")
 
         eventNode.listenOnly<PlayerLoginEvent> {
-            val game = player.joinGameOrNew("lobby")
+            val game = GameManager.findOrCreateGame("lobby")
             setSpawningInstance(game.instance)
             player.respawnPoint = SPAWN_POINT
+
+            player.scheduleNextTick {
+                player.joinGame(game)
+            }
 
             playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
 
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {
+
+                player.isEnableRespawnScreen = false
+
                 val rankPrefix = Component.text("MEMBER ", NamedTextColor.DARK_GRAY, TextDecoration.BOLD)
 
                 player.displayName = Component.text()

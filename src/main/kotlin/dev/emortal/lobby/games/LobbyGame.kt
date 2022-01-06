@@ -97,17 +97,13 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     override fun playerJoin(player: Player) {
         player.respawnPoint = LobbyExtension.SPAWN_POINT
 
-        // Can cause random unexpected issues due to players joining
-        // inside the PlayerLoginEvent
-        player.scheduleNextTick {
-            val compassItemStack = item(Material.COMPASS) {
-                displayName(
-                    Component.text("Game Selector", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)
-                )
-            }
-
-            player.inventory.setItemStack(4, compassItemStack)
+        val compassItemStack = item(Material.COMPASS) {
+            displayName(
+                Component.text("Game Selector", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)
+            )
         }
+
+        player.inventory.setItemStack(4, compassItemStack)
     }
 
     override fun playerLeave(player: Player) {
