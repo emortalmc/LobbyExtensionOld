@@ -6,7 +6,6 @@ import world.cepi.kstom.serializer.MaterialSerializer
 
 @Serializable
 class GameListing(
-    val name: String,
     val description: Array<String> = arrayOf(),
     @Serializable(with = MaterialSerializer::class)
     val item: Material = Material.GRASS_BLOCK,

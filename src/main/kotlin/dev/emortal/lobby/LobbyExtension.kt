@@ -44,8 +44,6 @@ class LobbyExtension : Extension() {
         val armourStandSeatMap = hashMapOf<Entity, Point>()
         val playerMusicInvMap = hashMapOf<Player, Inventory>()
 
-        val SPAWN_POINT = Pos(0.5, 65.0, 0.5, 180f, 0f)
-
         lateinit var gameListingConfig: GameListingConfig
     }
 
@@ -62,7 +60,7 @@ class LobbyExtension : Extension() {
 
         GameManager.registeredGameMap.forEach {
             if (!gameListingConfig.gameListings.contains(it.value.gameName)) {
-                gameListingConfig.gameListings[it.value.gameName] = GameListing(it.value.gameName)
+                gameListingConfig.gameListings[it.value.gameName] = GameListing()
             }
         }
 
@@ -71,7 +69,7 @@ class LobbyExtension : Extension() {
         GameManager.registerGame<LobbyGame>(
             eventNode,
             "lobby",
-            Component.empty(),
+            Component.text("Lobby"),
             false,
             WhenToRegisterEvents.IMMEDIATELY,
             GameOptions(
@@ -86,9 +84,9 @@ class LobbyExtension : Extension() {
         MinecraftServer.setBrandName("§6Minestom ${MinecraftServer.VERSION_NAME}§r")
 
         eventNode.listenOnly<PlayerLoginEvent> {
-            val game = GameManager.findOrCreateGame("lobby")
+            val game = GameManager.findOrCreateGame(player, "lobby")
             setSpawningInstance(game.instance)
-            player.respawnPoint = SPAWN_POINT
+            player.respawnPoint = game.spawnPosition
 
             player.scheduleNextTick {
                 player.joinGame(game)
@@ -99,23 +97,6 @@ class LobbyExtension : Extension() {
 
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {
-
-                player.isEnableRespawnScreen = false
-
-                val rankPrefix = Component.text("MEMBER ", NamedTextColor.DARK_GRAY, TextDecoration.BOLD)
-
-                player.displayName = Component.text()
-                    .append(rankPrefix)
-                    .append(Component.text(player.username, NamedTextColor.GRAY))
-                    .build()
-
-                val team = TeamBuilder(player.username, Manager.team)
-                    .teamColor(NamedTextColor.GRAY)
-                    .prefix(rankPrefix)
-                    .collisionRule(TeamsPacket.CollisionRule.NEVER)
-                    .build()
-
-                player.team = team
 
                 player.sendMessage(
                     Component.text()

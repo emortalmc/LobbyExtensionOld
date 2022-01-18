@@ -5,7 +5,6 @@ import dev.emortal.immortal.game.GameManager.joinGameOrNew
 import dev.emortal.immortal.game.GameOptions
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.inventories.GameSelectorInventory
-import dev.emortal.lobby.inventories.LecternGameSelectorInventory
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -52,51 +51,19 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     // TODO: Bossbar
     // TODO: Game selector + cool npc thing
 
-    var constantTask: Task? = null
-
     companion object {
-        val gameSelectorPos = Pos(0.5, 69.5, -32.5, 180f, 0f)
+        val spawnPoint = Pos(0.5, 65.0, 0.5, 180f, 0f)
     }
 
+    override var spawnPosition = spawnPoint
+
     override fun gameStarted() {
-        val hologram = Entity(EntityType.AREA_EFFECT_CLOUD)
-        val holoMeta = hologram.entityMeta as AreaEffectCloudMeta
-
-        holoMeta.setNotifyAboutChanges(false)
-        holoMeta.radius = 0f
-        holoMeta.isHasNoGravity = true
-        holoMeta.isCustomNameVisible = true
-        holoMeta.customName = Component.text()
-            .append(Component.text("CLICK ME", NamedTextColor.GREEN, TextDecoration.BOLD))
-            .append(Component.text(" to select a game!", NamedTextColor.GRAY))
-            .build()
-        holoMeta.setNotifyAboutChanges(true)
-
-        hologram.setInstance(instance, gameSelectorPos)
-
-        var i = 0.0
-        constantTask = Manager.scheduler.buildTask {
-            showParticle(
-                Particle.Companion.particle(
-                    type = ParticleType.DUST,
-                    count = 0,
-                    data = OffsetAndSpeed(0f, -1f, 0f, 0.2f),
-                    extraData = Dust(1f, 0f, 1f, 1f)
-                ),
-                gameSelectorPos.asVec().add(sin(i), 0.0, cos(i))
-            )
-
-            i += 0.2
-            if (i > PI * 2) i = 0.0
-        }.repeat(Duration.ofMillis(50)).schedule()
     }
 
     override fun gameDestroyed() {
     }
 
     override fun playerJoin(player: Player) {
-        player.respawnPoint = LobbyExtension.SPAWN_POINT
-
         val compassItemStack = item(Material.COMPASS) {
             displayName(
                 Component.text("Game Selector", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)
@@ -136,20 +103,8 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         }
 
         eventNode.listenOnly<PlayerMoveEvent> {
-            if (newPosition.y < 0) player.teleport(LobbyExtension.SPAWN_POINT)
+            if (newPosition.y < 0) player.teleport(spawnPosition)
 
-            if (newPosition.distance(Pos(0.5, 70.0, -37.5)) < 2) {
-                val selectedGame = player.getTag(LecternGameSelectorInventory.selectedGameTag)
-                if (selectedGame == null) {
-                    player.sendActionBar(Component.text("You need to select a game first!", NamedTextColor.RED))
-                    player.playSound(Sound.sound(SoundEvent.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1f, 1f))
-                    player.velocity = Vec(0.0, 10.0, 20.0)
-                    return@listenOnly
-                }
-
-                player.joinGameOrNew(selectedGame)
-                player.removeTag(LecternGameSelectorInventory.selectedGameTag)
-            }
             if (instance.getBlock(newPosition.sub(0.0, 1.0, 0.0)).compare(Block.SLIME_BLOCK)) {
                 player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
             }
@@ -173,25 +128,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             }
         }
 
-        eventNode.listenOnly<InventoryCloseEvent> {
-            if (inventory == null) return@listenOnly
-
-            if (inventory!!.hasTag(LecternGameSelectorInventory.lecternInventoryTag)) {
-                player.playSound(
-                    Sound.sound(SoundEvent.BLOCK_CHEST_CLOSE, Sound.Source.MASTER, 1f, 2f),
-                    Sound.Emitter.self()
-                )
-
-            }
-        }
-
         eventNode.listenOnly<PlayerBlockInteractEvent> {
-            if (block.compare(Block.LECTERN)) {
-                player.openInventory(LecternGameSelectorInventory.inventory)
-                player.playSound(
-                    Sound.sound(SoundEvent.BLOCK_CHEST_OPEN, Sound.Source.MASTER, 1f, 2f)
-                )
-            }
 
             if (block.name().contains("stair", true)) {
                 if (player.vehicle != null) return@listenOnly
@@ -218,7 +155,9 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                 }
 
                 armourStand.setInstance(instance, Pos(spawnPos, yaw, 0f))
-                armourStand.addPassenger(player)
+                    .thenRun {
+                        armourStand.addPassenger(player)
+                    }
 
                 LobbyExtension.armourStandSeatMap[armourStand] = blockPosition
             }

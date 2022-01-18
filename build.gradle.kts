@@ -6,14 +6,14 @@ plugins {
     // Kotlinx serialization for any data format
     kotlin("plugin.serialization") version "1.6.10"
     // Shade the plugin
-    id("com.github.johnrengelman.shadow") version "7.1.0"
+    id("com.github.johnrengelman.shadow") version "7.1.2"
     // Allow publishing
     `maven-publish`
 
     // Apply the application plugin to add support for building a jar
     java
     // Dokka documentation w/ kotlin
-    id("org.jetbrains.dokka") version "1.6.0"
+    id("org.jetbrains.dokka") version "1.6.10"
 }
 
 repositories {
@@ -36,11 +36,11 @@ dependencies {
     // Use the Kotlin reflect library.
     compileOnly(kotlin("reflect"))
 
-    compileOnly("com.github.emortaldev:Minestom:d25ea275e4")
-    compileOnly("com.github.EmortalMC:Immortal:dfaa9718fd")
+    compileOnly("com.github.Minestom:Minestom:0366027c5d")
+    compileOnly("com.github.EmortalMC:Immortal:971f116a47")
 
     // import kotlinx serialization
-    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.1")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
 }
 
 tasks.withType<Test> {
@@ -74,12 +74,6 @@ tasks {
     // Make build depend on shadowJar as shading dependencies will most likely be required.
     build { dependsOn(shadowJar) }
 
-}
-
-java {
-    toolchain {
-        languageVersion.set(JavaLanguageVersion.of(17))
-    }
 }
 
 val compileKotlin: KotlinCompile by tasks

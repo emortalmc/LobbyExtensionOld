@@ -1,15 +1,19 @@
 package dev.emortal.lobby.inventories
 
 import dev.emortal.immortal.game.GameManager
+import dev.emortal.immortal.game.GameManager.joinGameOrNew
 import dev.emortal.lobby.LobbyExtension
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
+import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import world.cepi.kstom.adventure.asMini
+import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.item.item
+import world.cepi.kstom.util.setItemStacks
 
 object GameSelectorInventory {
     val inventory: Inventory
@@ -18,21 +22,31 @@ object GameSelectorInventory {
         val inventoryTitle = Component.text("Games", NamedTextColor.BLACK)
         inventory = Inventory(InventoryType.CHEST_6_ROW, inventoryTitle)
 
-        val itemStacks = Array(inventory.size) { ItemStack.AIR }
+        val itemStackMap = mutableMapOf<Int, ItemStack>()
 
         // TODO: Add player count of the game to lore
         LobbyExtension.gameListingConfig.gameListings.forEach {
-            val loreList = it.value.description.toMutableList()
-            loreList.addAll(listOf("", "<green>● <bold>${GameManager.gameMap[it.key]?.size ?: 0}</bold> playing"))
+            if (!it.value.visible) return@forEach
 
-            itemStacks[it.value.slot] = item(it.value.item) {
-                displayName(it.value.name.asMini().decoration(TextDecoration.ITALIC, false))
-                lore(loreList.map { loreLine -> loreLine.asMini().decoration(TextDecoration.ITALIC, false) })
+            val gameClass = GameManager.gameNameToClassMap[it.key] ?: return@forEach
+            val gameType = GameManager.registeredGameMap[gameClass] ?: return@forEach
+
+            val loreList = it.value.description.toMutableList()
+            loreList.addAll(listOf(
+                "",
+                "<dark_gray>Click or type /play ${it.key}",
+                "<green>● <bold>${GameManager.gameMap[it.key]?.size ?: 0}</bold> playing"
+            ))
+
+            itemStackMap[it.value.slot] = item(it.value.item) {
+                displayName(gameType.gameTitle.noItalic())
+                lore(loreList.map { loreLine -> loreLine.asMini().noItalic() })
+                hideFlag(*ItemHideFlag.values())
                 setTag(GameManager.gameNameTag, it.key)
             }
         }
 
-        inventory.copyContents(itemStacks)
+        inventory.setItemStacks(itemStackMap)
 
         inventory.addInventoryCondition { player, _, _, inventoryConditionResult ->
             inventoryConditionResult.isCancel = true
@@ -40,8 +54,8 @@ object GameSelectorInventory {
             if (inventoryConditionResult.clickedItem == ItemStack.AIR) return@addInventoryCondition
 
             if (inventoryConditionResult.clickedItem.hasTag(GameManager.gameNameTag)) {
-                val gameName = inventoryConditionResult.clickedItem.getTag(GameManager.gameNameTag)
-                player.chat("/play $gameName")
+                val gameName = inventoryConditionResult.clickedItem.getTag(GameManager.gameNameTag) ?: return@addInventoryCondition
+                player.joinGameOrNew(gameName)
             }
         }
     }

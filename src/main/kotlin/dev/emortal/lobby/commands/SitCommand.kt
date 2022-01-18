@@ -10,6 +10,7 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.block.Block
+import world.cepi.kstom.Manager
 import world.cepi.kstom.command.kommand.Kommand
 
 object SitCommand : Kommand({
@@ -18,7 +19,7 @@ object SitCommand : Kommand({
 
     condition {
         if (sender !is Player) return@condition false
-        else if (!sender.asPlayer().instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) return@condition false
+        else if (!(sender as Player).instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) return@condition false
         return@condition true
     }
 
@@ -46,7 +47,6 @@ object SitCommand : Kommand({
             player.position.blockZ().toDouble()
         )
 
-
         if (LobbyExtension.occupiedSeats.contains(roundedPos)) {
             player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
             return@default
@@ -66,7 +66,14 @@ object SitCommand : Kommand({
 
         val spawnPos = roundedPos.add(0.5, -0.3, 0.5)
         armourStand.setInstance(player.instance!!, spawnPos.withYaw(player.position.yaw))
-        armourStand.addPassenger(player)
+            .thenRun {
+                armourStand.addPassenger(player)
+            }
+
+        Manager.connection.onlinePlayers.forEach {
+            it.sendMessage("You are not viewing ${armourStand.isViewer(it)}")
+
+        }
 
         LobbyExtension.armourStandSeatMap[armourStand] = roundedPos
     }
