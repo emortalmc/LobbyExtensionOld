@@ -106,6 +106,7 @@ class LobbyExtension : Extension() {
                         .append("<bold><gradient:gold:light_purple>EmortalMC".asMini())
                 )
 
+
                 Manager.scheduler.buildTask {
 
                     player.showFirework(
@@ -134,6 +135,7 @@ class LobbyExtension : Extension() {
 
         MusicPlayerInventory.init()
         DiscCommand.register()
+        DiscordCommand.register()
         PerformanceCommand.register()
         RulesCommand.register()
         SpawnCommand.register()
@@ -145,6 +147,7 @@ class LobbyExtension : Extension() {
 
     override fun terminate() {
         DiscCommand.unregister()
+        DiscordCommand.unregister()
         PerformanceCommand.unregister()
         RulesCommand.unregister()
         SpawnCommand.unregister()
@@ -165,8 +168,6 @@ class LobbyExtension : Extension() {
                 Component.text()
                     .append(Component.text("\n ", NamedTextColor.GRAY))
                     .append(Component.text("${Manager.connection.onlinePlayers.size} online", NamedTextColor.GRAY))
-                    .append(Component.text("  |  ", NamedTextColor.DARK_GRAY))
-                    .append(Component.text("${it.latency}ms", NamedTextColor.GREEN))
                     .append(Component.text("\n└${" ".repeat(50)}", NamedTextColor.LIGHT_PURPLE))
                     .append(Component.text("┘ ", NamedTextColor.GOLD))
             )

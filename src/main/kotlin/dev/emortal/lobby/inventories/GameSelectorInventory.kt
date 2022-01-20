@@ -24,7 +24,6 @@ object GameSelectorInventory {
 
         val itemStackMap = mutableMapOf<Int, ItemStack>()
 
-        // TODO: Add player count of the game to lore
         LobbyExtension.gameListingConfig.gameListings.forEach {
             if (!it.value.visible) return@forEach
 
@@ -34,7 +33,7 @@ object GameSelectorInventory {
             val loreList = it.value.description.toMutableList()
             loreList.addAll(listOf(
                 "",
-                "<dark_gray>Click or type /play ${it.key}",
+                "<dark_gray>/play ${it.key}",
                 "<green>● <bold>${GameManager.gameMap[it.key]?.size ?: 0}</bold> playing"
             ))
 

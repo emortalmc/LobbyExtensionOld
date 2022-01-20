@@ -70,11 +70,6 @@ object SitCommand : Kommand({
                 armourStand.addPassenger(player)
             }
 
-        Manager.connection.onlinePlayers.forEach {
-            it.sendMessage("You are not viewing ${armourStand.isViewer(it)}")
-
-        }
-
         LobbyExtension.armourStandSeatMap[armourStand] = roundedPos
     }
 
