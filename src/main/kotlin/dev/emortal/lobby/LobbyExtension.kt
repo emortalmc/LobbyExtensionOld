@@ -1,41 +1,40 @@
 package dev.emortal.lobby
 
+import dev.emortal.immortal.ImmortalExtension
+import dev.emortal.immortal.config.GameListing
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.joinGame
 import dev.emortal.immortal.game.GameOptions
 import dev.emortal.immortal.game.WhenToRegisterEvents
+import dev.emortal.immortal.util.MultilineHologram
+import dev.emortal.immortal.util.PacketNPC
 import dev.emortal.lobby.commands.*
-import dev.emortal.lobby.config.ConfigurationHelper
-import dev.emortal.lobby.config.GameListing
-import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.showFirework
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.MinecraftServer
 import net.minestom.server.color.Color
 import net.minestom.server.coordinate.Point
-import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.PlayerSkin
 import net.minestom.server.event.player.PlayerDisconnectEvent
 import net.minestom.server.event.player.PlayerLoginEvent
+import net.minestom.server.event.player.PlayerPacketEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
-import net.minestom.server.network.packet.server.play.TeamsPacket
-import net.minestom.server.scoreboard.TeamBuilder
+import net.minestom.server.network.packet.client.play.ClientPongPacket
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.clone
-import java.nio.file.Path
 import java.time.Duration
+import java.util.*
 
 class LobbyExtension : Extension() {
 
@@ -44,33 +43,22 @@ class LobbyExtension : Extension() {
         val armourStandSeatMap = hashMapOf<Entity, Point>()
         val playerMusicInvMap = hashMapOf<Player, Inventory>()
 
-        lateinit var gameListingConfig: GameListingConfig
+        val npcs = mutableMapOf<String, PacketNPC>()
     }
 
     override fun initialize() {
-        // epic shutdown thing
         Manager.connection.shutdownText = Component.text()
-            .append("<gradient:light_purple:gold><bold>EmortalMC\n\n".asMini())
-            .append(Component.text("Server is shutting down.", NamedTextColor.RED))
-            .append(Component.text("\n\ndiscord.gg/TZyuMSha96", NamedTextColor.DARK_GRAY))
+            .append("<gradient:light_purple:gold><bold>EmortalMC ".asMini())
+            .append(Component.text("has shutdown. Possible downtime?", NamedTextColor.RED))
+            .append(Component.text("\ndiscord.gg/TZyuMSha96", NamedTextColor.DARK_GRAY))
             .build()
-
-        val gameListingsPath = Path.of("./gameListings.json")
-        gameListingConfig = ConfigurationHelper.initConfigFile(gameListingsPath, GameListingConfig())
-
-        GameManager.registeredGameMap.forEach {
-            if (!gameListingConfig.gameListings.contains(it.value.gameName)) {
-                gameListingConfig.gameListings[it.value.gameName] = GameListing()
-            }
-        }
-
-        ConfigurationHelper.writeObjectToPath(gameListingsPath, gameListingConfig)
 
         GameManager.registerGame<LobbyGame>(
             eventNode,
             "lobby",
-            Component.text("Lobby"),
-            false,
+            Component.text("Lobby", NamedTextColor.GREEN),
+            showsInSlashPlay = true,
+            canSpectate = true,
             WhenToRegisterEvents.IMMEDIATELY,
             GameOptions(
                 maxPlayers = 50,
@@ -80,6 +68,19 @@ class LobbyExtension : Extension() {
                 showScoreboard = false
             )
         )
+
+        ImmortalExtension.gameListingConfig.gameListings.entries.forEach {
+            val hologramLines = it.value.npcTitles.map(String::asMini).toMutableList()
+            hologramLines.add(Component.text("0 online", NamedTextColor.GRAY))
+
+
+            npcs[it.key] = PacketNPC(
+                it.value.npcPosition,
+                hologramLines,
+                it.key,
+                if (it.value.npcSkinValue.isNotEmpty() && it.value.npcSkinSignature.isNotEmpty()) PlayerSkin(it.value.npcSkinValue, it.value.npcSkinSignature) else null
+            )
+        }
 
         MinecraftServer.setBrandName("§6Minestom ${MinecraftServer.VERSION_NAME}§r")
 
@@ -97,15 +98,13 @@ class LobbyExtension : Extension() {
 
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {
-
-                player.sendMessage(
+                if (player.displayName != null) player.sendMessage(
                     Component.text()
                         .append(Component.text("Welcome, ", NamedTextColor.GRAY))
                         .append(player.displayName!!)
                         .append(Component.text(", to ", NamedTextColor.GRAY))
                         .append("<bold><gradient:gold:light_purple>EmortalMC".asMini())
                 )
-
 
                 Manager.scheduler.buildTask {
 

@@ -29,7 +29,7 @@ object SitCommand : Kommand({
             return@default
         }
 
-            var i = 0
+        var i = 0
         while (true) {
             i++
             if (!player.instance!!.getBlock(player.position.blockX(), player.position.blockY() - i, player.position.blockZ()).compare(Block.AIR))
