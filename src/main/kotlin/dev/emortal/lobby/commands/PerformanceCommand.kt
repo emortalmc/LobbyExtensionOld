@@ -5,6 +5,7 @@ import dev.emortal.lobby.util.armify
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.event.server.ServerTickMonitorEvent
+import net.minestom.server.instance.SharedInstance
 import net.minestom.server.monitoring.TickMonitor
 import world.cepi.kstom.Manager
 import world.cepi.kstom.command.kommand.Kommand
@@ -23,7 +24,8 @@ object PerformanceCommand : Kommand({
 
         val onlinePlayers = Manager.connection.onlinePlayers.size
         val entities = Manager.instance.instances.sumOf { it.entities.size } - onlinePlayers
-        val instances = Manager.instance.instances.size
+        val instances = Manager.instance.instances
+        val sharedInstances = instances.count { it is SharedInstance }
         val chunks = Manager.instance.instances.sumOf { it.chunks.size }
 
         sender.sendMessage(
@@ -38,7 +40,8 @@ object PerformanceCommand : Kommand({
                 .append(Component.text("\nEntities: ", NamedTextColor.GRAY))
                 .append(Component.text(entities, NamedTextColor.GOLD))
                 .append(Component.text("\nInstances: ", NamedTextColor.GRAY))
-                .append(Component.text(instances, NamedTextColor.GOLD))
+                .append(Component.text(instances.size, NamedTextColor.GOLD))
+                .append(Component.text(" (Shared: ${sharedInstances})", NamedTextColor.DARK_GRAY))
                 .append(Component.text("\nLoaded Chunks: ", NamedTextColor.GRAY))
                 .append(Component.text(chunks, NamedTextColor.GOLD))
                 .armify()

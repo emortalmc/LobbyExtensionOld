@@ -190,7 +190,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
                 armourStand.setInstance(instance, Pos(spawnPos, yaw, 0f))
                     .thenRun {
-
                         armourStand.addPassenger(player)
                     }
 
@@ -200,9 +199,10 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     }
 
     override fun instanceCreate(): Instance {
-        val instance = Manager.instance.createInstanceContainer()
-        instance.chunkLoader = AnvilLoader("lobby")
-        return instance
+        //val newInstance = Manager.instance.createInstanceContainer()
+        //newInstance.chunkLoader = AnvilLoader("lobby")
+        //return newInstance
+        return Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
     }
 
     // Lobby is not winnable

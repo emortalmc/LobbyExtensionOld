@@ -25,6 +25,9 @@ import net.minestom.server.event.player.PlayerLoginEvent
 import net.minestom.server.event.player.PlayerPacketEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
+import net.minestom.server.instance.AnvilLoader
+import net.minestom.server.instance.Instance
+import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
@@ -44,9 +47,14 @@ class LobbyExtension : Extension() {
         val playerMusicInvMap = hashMapOf<Player, Inventory>()
 
         val npcs = mutableMapOf<String, PacketNPC>()
+
+        lateinit var lobbyInstance: InstanceContainer
     }
 
     override fun initialize() {
+        lobbyInstance = Manager.instance.createInstanceContainer()
+        lobbyInstance.chunkLoader = AnvilLoader("lobby")
+
         Manager.connection.shutdownText = Component.text()
             .append("<gradient:light_purple:gold><bold>EmortalMC ".asMini())
             .append(Component.text("has shutdown. Possible downtime?", NamedTextColor.RED))
