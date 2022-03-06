@@ -1,49 +1,43 @@
 package dev.emortal.lobby.games
 
 import dev.emortal.immortal.ImmortalExtension
-import dev.emortal.immortal.event.PlayerJoinGameEvent
-import dev.emortal.immortal.event.PlayerLeaveGameEvent
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameOptions
-import dev.emortal.immortal.util.MultilineHologram
-import dev.emortal.immortal.util.PacketNPC
-import dev.emortal.immortal.util.PermissionUtils.hasLuckPermission
+import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
+import dev.emortal.immortal.npc.MultilineHologram
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
+import dev.emortal.lobby.commands.MountCommand.mountMap
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextDecoration
-import net.minestom.server.adventure.audience.Audiences.players
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
-import net.minestom.server.entity.PlayerSkin
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.event.entity.EntityPotionAddEvent
 import net.minestom.server.event.entity.EntityPotionRemoveEvent
+import net.minestom.server.event.entity.EntityTickEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
-import net.minestom.server.event.player.*
-import net.minestom.server.instance.AnvilLoader
+import net.minestom.server.event.player.PlayerBlockInteractEvent
+import net.minestom.server.event.player.PlayerMoveEvent
+import net.minestom.server.event.player.PlayerPacketEvent
+import net.minestom.server.event.player.PlayerUseItemEvent
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.Material
-import net.minestom.server.network.packet.client.play.ClientInteractEntityPacket
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
 import world.cepi.kstom.Manager
-import world.cepi.kstom.adventure.asMini
+import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.item.item
-import java.time.Duration
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
-    // TODO: Bossbar
-    // TODO: Game selector + cool npc thing
 
     companion object {
         val spawnPoint = Pos(0.5, 65.0, 0.5, 180f, 0f)
@@ -70,7 +64,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     override fun playerJoin(player: Player) {
         val compassItemStack = item(Material.COMPASS) {
             displayName(
-                Component.text("Game Selector", NamedTextColor.WHITE).decoration(TextDecoration.ITALIC, false)
+                Component.text("Game Selector", NamedTextColor.GOLD).noItalic()
             )
         }
 
@@ -80,7 +74,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
         player.inventory.setItemStack(4, compassItemStack)
 
-        if (player.hasLuckPermission("lobby.fly")) player.isAllowFlying = true
+        player.isAllowFlying = player.hasLuckPermission("lobby.fly")
     }
 
     override fun playerLeave(player: Player) {
@@ -90,6 +84,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     }
 
     override fun registerEvents() {
+
         eventNode.listenOnly<ItemDropEvent> {
             isCancelled = true
         }
@@ -114,41 +109,30 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             }
         }
 
-        Manager.globalEvent.listenOnly<PlayerJoinGameEvent> {
-            val gameName = getGame().gameTypeInfo.gameName
-            val gameListing = ImmortalExtension.gameListingConfig.gameListings[gameName] ?: return@listenOnly
-            if (!gameListing.itemVisible) return@listenOnly
-
-            val hologram = holograms[gameName] ?: return@listenOnly
-            val playerCount = GameManager.gameMap[gameName]?.sumOf { it.players.size } ?: 0
-
-            hologram.setLine(hologram.components.size - 1, Component.text("$playerCount online", NamedTextColor.GRAY))
-        }
-        Manager.globalEvent.listenOnly<PlayerLeaveGameEvent> {
-            val gameName = getGame().gameTypeInfo.gameName
-            val gameListing = ImmortalExtension.gameListingConfig.gameListings[gameName] ?: return@listenOnly
-            if (!gameListing.itemVisible) return@listenOnly
-
-            val hologram = holograms[gameName] ?: return@listenOnly
-            val playerCount = GameManager.gameMap[gameName]?.sumOf { it.players.size } ?: 0
-
-            hologram.setLine(hologram.components.size - 1, Component.text("$playerCount online", NamedTextColor.GRAY))
-        }
-
         eventNode.listenOnly<PlayerMoveEvent> {
-            if (newPosition.y < 0) player.teleport(spawnPosition)
+            if (newPosition.y < 55) player.teleport(spawnPosition)
 
-            if (instance.getBlock(newPosition.sub(0.0, 1.0, 0.0)).compare(Block.SLIME_BLOCK)) {
+            val blockUnder = instance.getBlock(newPosition.sub(0.0, 1.0, 0.0))
+
+            if (blockUnder.compare(Block.SLIME_BLOCK)) {
                 player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
             }
         }
 
+        eventNode.listenOnly<EntityTickEvent> {
+
+        }
+
         eventNode.listenOnly<PlayerPacketEvent> {
             if (packet is ClientSteerVehiclePacket) {
-                if ((packet as ClientSteerVehiclePacket).flags.toInt() == 2) {
+                val steerPacket = packet as ClientSteerVehiclePacket
+                if (steerPacket.flags.toInt() == 2) {
                     if (player.vehicle != null) {
                         val entity = player.vehicle!!
                         entity.removePassenger(player)
+
+                        mountMap[player]?.destroy()
+                        mountMap.remove(player)
 
                         if (LobbyExtension.armourStandSeatMap.contains(entity)) {
                             LobbyExtension.occupiedSeats.remove(LobbyExtension.armourStandSeatMap[entity])
@@ -157,7 +141,12 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                             player.velocity = Vec(0.0, 10.0, 0.0)
                         }
                     }
+                    return@listenOnly
                 }
+
+                val mount = mountMap[player] ?: return@listenOnly
+                mount.move(player, steerPacket.forward, steerPacket.sideways)
+
             }
         }
 
@@ -196,6 +185,17 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                 LobbyExtension.armourStandSeatMap[armourStand] = blockPosition
             }
         }
+    }
+
+    fun refreshHolo(game: Game) {
+        val gameName = game.gameTypeInfo.gameName
+        val gameListing = ImmortalExtension.gameListingConfig.gameListings[gameName] ?: return
+        if (!gameListing.itemVisible) return
+
+        val hologram = holograms[gameName] ?: return
+        val playerCount = GameManager.gameMap[gameName]?.sumOf { it.players.size } ?: 0
+
+        hologram.setLine(hologram.components.size - 1, Component.text("$playerCount online", NamedTextColor.GRAY))
     }
 
     override fun instanceCreate(): Instance {

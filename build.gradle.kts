@@ -36,11 +36,15 @@ dependencies {
     // Use the Kotlin reflect library.
     compileOnly(kotlin("reflect"))
 
-    compileOnly("com.github.Minestom:Minestom:2e02dfd4d8")
-    compileOnly("com.github.EmortalMC:Immortal:cd4c7dab0d")
+    compileOnly("com.github.Minestom:Minestom:6ef04ae618")
+    compileOnly("com.github.EmortalMC:Immortal:81dfdace2b")
+
+    compileOnly("com.github.EmortalMC:NBStom:02647afd1f")
 
     // import kotlinx serialization
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
+
+    implementation(files("libs/Blocky-1.0-SNAPSHOT.jar"))
 }
 
 tasks.withType<Test> {

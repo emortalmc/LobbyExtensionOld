@@ -13,6 +13,7 @@ object SpawnCommand : Kommand({
 
     default {
         val completableFuture = if (player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
+            player.vehicle?.removePassenger(player)
             player.teleport(LobbyGame.spawnPoint)
         } else {
             player.joinGameOrNew("lobby")

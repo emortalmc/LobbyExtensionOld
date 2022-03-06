@@ -1,6 +1,7 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
+import dev.emortal.immortal.game.GameManager.logger
 import dev.emortal.lobby.LobbyExtension
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -10,6 +11,7 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.block.Block
+import org.slf4j.LoggerFactory
 import world.cepi.kstom.Manager
 import world.cepi.kstom.command.kommand.Kommand
 
@@ -18,8 +20,12 @@ object SitCommand : Kommand({
     onlyPlayers
 
     condition {
-        if (sender !is Player) return@condition false
-        else if (!(sender as Player).instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) return@condition false
+        if (sender !is Player) {
+            return@condition false
+        }
+        if ((sender as Player).instance?.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
+            return@condition false
+        }
         return@condition true
     }
 

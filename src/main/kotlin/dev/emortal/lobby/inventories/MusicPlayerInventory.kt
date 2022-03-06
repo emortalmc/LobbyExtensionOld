@@ -43,7 +43,7 @@ object MusicPlayerInventory {
 
         itemStacks[40] = ItemStack.builder(Material.BARRIER)
             .displayName(
-                Component.text("STOP", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false)
+                Component.text("Stop", NamedTextColor.RED, TextDecoration.BOLD).decoration(TextDecoration.ITALIC, false)
             )
             .build()
 

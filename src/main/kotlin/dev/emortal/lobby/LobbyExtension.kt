@@ -2,16 +2,19 @@ package dev.emortal.lobby
 
 import dev.emortal.immortal.ImmortalExtension
 import dev.emortal.immortal.config.GameListing
+import dev.emortal.immortal.event.GameDestroyEvent
+import dev.emortal.immortal.event.PlayerJoinGameEvent
+import dev.emortal.immortal.event.PlayerLeaveGameEvent
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.joinGame
 import dev.emortal.immortal.game.GameOptions
 import dev.emortal.immortal.game.WhenToRegisterEvents
-import dev.emortal.immortal.util.MultilineHologram
-import dev.emortal.immortal.util.PacketNPC
+import dev.emortal.immortal.npc.PacketNPC
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.showFirework
+import dev.emortal.nbstom.NBS
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.MinecraftServer
@@ -20,10 +23,7 @@ import net.minestom.server.coordinate.Point
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.PlayerSkin
-import net.minestom.server.event.player.PlayerDisconnectEvent
-import net.minestom.server.event.player.PlayerLoginEvent
-import net.minestom.server.event.player.PlayerPacketEvent
-import net.minestom.server.event.player.PlayerSpawnEvent
+import net.minestom.server.event.player.*
 import net.minestom.server.extensions.Extension
 import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.Instance
@@ -34,8 +34,11 @@ import net.minestom.server.item.firework.FireworkEffectType
 import net.minestom.server.network.packet.client.play.ClientPongPacket
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
+import world.cepi.kstom.command.register
+import world.cepi.kstom.command.unregister
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.clone
+import java.nio.file.Path
 import java.time.Duration
 import java.util.*
 
@@ -54,6 +57,7 @@ class LobbyExtension : Extension() {
     override fun initialize() {
         lobbyInstance = Manager.instance.createInstanceContainer()
         lobbyInstance.chunkLoader = AnvilLoader("lobby")
+        lobbyInstance.setTag(GameManager.doNotUnregisterTag, 1)
 
         Manager.connection.shutdownText = Component.text()
             .append("<gradient:light_purple:gold><bold>EmortalMC ".asMini())
@@ -65,8 +69,8 @@ class LobbyExtension : Extension() {
             eventNode,
             "lobby",
             Component.text("Lobby", NamedTextColor.GREEN),
-            showsInSlashPlay = true,
-            canSpectate = true,
+            showsInSlashPlay = false,
+            canSpectate = false,
             WhenToRegisterEvents.IMMEDIATELY,
             GameOptions(
                 maxPlayers = 50,
@@ -79,8 +83,8 @@ class LobbyExtension : Extension() {
 
         ImmortalExtension.gameListingConfig.gameListings.entries.forEach {
             val hologramLines = it.value.npcTitles.map(String::asMini).toMutableList()
-            hologramLines.add(Component.text("0 online", NamedTextColor.GRAY))
 
+            hologramLines.add(Component.text("0 online", NamedTextColor.GRAY))
 
             npcs[it.key] = PacketNPC(
                 it.value.npcPosition,
@@ -91,6 +95,28 @@ class LobbyExtension : Extension() {
         }
 
         MinecraftServer.setBrandName("§6Minestom ${MinecraftServer.VERSION_NAME}§r")
+
+        eventNode.listenOnly<PlayerJoinGameEvent> {
+            val games = GameManager.gameMap["lobby"] ?: return@listenOnly
+            games.forEach {
+                val lobbyGame = it as LobbyGame
+                lobbyGame.refreshHolo(getGame())
+            }
+        }
+        eventNode.listenOnly<PlayerLeaveGameEvent> {
+            val games = GameManager.gameMap["lobby"] ?: return@listenOnly
+            games.forEach {
+                val lobbyGame = it as LobbyGame
+                lobbyGame.refreshHolo(getGame())
+            }
+        }
+        eventNode.listenOnly<GameDestroyEvent> {
+            val games = GameManager.gameMap["lobby"] ?: return@listenOnly
+            games.forEach {
+                val lobbyGame = it as LobbyGame
+                lobbyGame.refreshHolo(getGame())
+            }
+        }
 
         eventNode.listenOnly<PlayerLoginEvent> {
             val game = GameManager.findOrCreateGame(player, "lobby")
@@ -104,8 +130,25 @@ class LobbyExtension : Extension() {
             playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
 
+        val susNBS = NBS(Path.of("./nbs/sus.nbs"))
+        eventNode.listenOnly<PlayerChatEvent> {
+            if (message.lowercase().contains("sus")) {
+                NBS.stopPlaying(player)
+                DiscCommand.stopPlayingTaskMap[player]?.cancel()
+                DiscCommand.stopPlayingTaskMap.remove(player)
+
+                NBS.play(susNBS, player)
+            }
+        }
+
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {
+
+                if (player.username == "brayjamin") {
+                    NBS.play(susNBS, player)
+                    player.sendMessage("sus")
+                }
+
                 if (player.displayName != null) player.sendMessage(
                     Component.text()
                         .append(Component.text("Welcome, ", NamedTextColor.GRAY))
@@ -140,14 +183,17 @@ class LobbyExtension : Extension() {
             playerMusicInvMap.remove(player)
         }
 
+
         MusicPlayerInventory.init()
         DiscCommand.register()
         DiscordCommand.register()
-        PerformanceCommand.register()
         RulesCommand.register()
         SpawnCommand.register()
         SitCommand.register()
         VersionCommand.register()
+        MountCommand.register()
+
+        DiscCommand.refreshSongs()
 
         logger.info("[LobbyExtension] Initialized!")
     }
@@ -155,11 +201,11 @@ class LobbyExtension : Extension() {
     override fun terminate() {
         DiscCommand.unregister()
         DiscordCommand.unregister()
-        PerformanceCommand.unregister()
         RulesCommand.unregister()
         SpawnCommand.unregister()
         SitCommand.unregister()
         VersionCommand.unregister()
+        MountCommand.unregister()
 
         logger.info("[LobbyExtension] Terminated!")
     }
