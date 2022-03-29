@@ -1,81 +1,44 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    // Apply the Kotlin JVM plugin to add support for Kotlin.
     id("org.jetbrains.kotlin.jvm") version "1.6.10"
-    // Kotlinx serialization for any data format
     kotlin("plugin.serialization") version "1.6.10"
-    // Shade the plugin
     id("com.github.johnrengelman.shadow") version "7.1.2"
-    // Allow publishing
-    `maven-publish`
 
-    // Apply the application plugin to add support for building a jar
     java
-    // Dokka documentation w/ kotlin
-    id("org.jetbrains.dokka") version "1.6.10"
 }
 
 repositories {
-    // Use mavenCentral
     mavenCentral()
-
     maven(url = "https://jitpack.io")
     maven(url = "https://repo.spongepowered.org/maven")
-    maven(url = "https://repo.minestom.com/repository/maven-public/")
-    maven(url = "https://repo.velocitypowered.com/snapshots/")
 }
 
 dependencies {
-    // Align versions of all Kotlin components
-    compileOnly(platform("org.jetbrains.kotlin:kotlin-bom"))
+    //compileOnly(kotlin("stdlib"))
 
-    // Use the Kotlin JDK 8 standard library.
-    compileOnly(kotlin("stdlib"))
-
-    // Use the Kotlin reflect library.
-    compileOnly(kotlin("reflect"))
-
-    compileOnly("com.github.Minestom:Minestom:6ef04ae618")
-    compileOnly("com.github.EmortalMC:Immortal:81dfdace2b")
+    compileOnly("com.github.Minestom:Minestom:5469fef417")
+    compileOnly("com.github.EmortalMC:Immortal:2c323e7911")
 
     compileOnly("com.github.EmortalMC:NBStom:02647afd1f")
-
-    // import kotlinx serialization
+    compileOnly("org.redisson:redisson:3.17.0")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-
-    implementation(files("libs/Blocky-1.0-SNAPSHOT.jar"))
+    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.0")
+    //implementation(files("libs/Blocky-1.0-SNAPSHOT.jar"))
 }
 
-tasks.withType<Test> {
-    useJUnitPlatform()
-}
-
-configurations {
-    testImplementation {
-        extendsFrom(configurations.compileOnly.get())
-    }
-}
-
-// Take gradle.properties and apply it to resources.
 tasks {
     processResources {
-        // Apply properties to extension.json
         filesMatching("extension.json") {
             expand(project.properties)
         }
     }
 
-    // Set name, minimize, and merge service files
     named<com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar>("shadowJar") {
         archiveBaseName.set(project.name)
         mergeServiceFiles()
         minimize()
     }
-
-    test { useJUnitPlatform() }
-
-    // Make build depend on shadowJar as shading dependencies will most likely be required.
     build { dependsOn(shadowJar) }
 
 }

@@ -1,6 +1,14 @@
 package dev.emortal.lobby.util
 
+import dev.emortal.immortal.util.MinestomRunnable
+import dev.emortal.nbstom.MinestomRunnable.Companion.defaultTimer
+import kotlinx.coroutines.GlobalScope
+import net.kyori.adventure.audience.Audience
+import net.kyori.adventure.sound.Sound
+import net.minestom.server.Viewable
+import net.minestom.server.adventure.audience.PacketGroupingAudience
 import net.minestom.server.coordinate.Pos
+import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
@@ -11,17 +19,17 @@ import net.minestom.server.item.Material
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.metadata.FireworkMeta
 import net.minestom.server.network.packet.server.play.EntityStatusPacket
+import net.minestom.server.sound.SoundEvent
+import net.minestom.server.utils.PacketUtils.sendGroupedPacket
+import net.minestom.server.utils.PacketUtils.sendPacket
+import world.cepi.kstom.util.playSound
+import java.time.Duration
+import java.util.concurrent.ThreadLocalRandom
 
-/**
- * Creates a firework explode effect
- *
- * e.g. `player.showFirework(instance, player.position, mutableListOf(...))`
- *
- * @param instance The instance to explode in
- * @param position Where to explode
- * @param effects List of FireworkEffect
- */
-fun Player.showFirework(
+fun Player.showFirework(instance: Instance, position: Pos, effects: MutableList<FireworkEffect>) = listOf(this).showFirework(instance, position, effects)
+fun Player.showFireworkWithDuration(instance: Instance, position: Pos, ticks: Int, effects: MutableList<FireworkEffect>) = listOf(this).showFireworkWithDuration(instance, position, ticks, effects)
+
+fun Collection<Player>.showFirework(
     instance: Instance,
     position: Pos,
     effects: MutableList<FireworkEffect>
@@ -32,9 +40,51 @@ fun Player.showFirework(
     val meta = firework.entityMeta as FireworkRocketMeta
 
     meta.fireworkInfo = fireworkItemStack
+    firework.updateViewableRule { this.contains(it) }
+    firework.setNoGravity(true)
     firework.setInstance(instance, position)
 
-    sendPacket(EntityStatusPacket(firework.entityId, 17))
+    sendGroupedPacket(this, EntityStatusPacket(firework.entityId, 17))
 
     firework.remove()
+}
+
+fun Collection<Player>.showFireworkWithDuration(
+    instance: Instance,
+    position: Pos,
+    ticks: Int,
+    effects: MutableList<FireworkEffect>
+) {
+    val fireworkMeta = FireworkMeta.Builder().effects(effects).build()
+    val fireworkItemStack = ItemStack.builder(Material.FIREWORK_ROCKET).meta(fireworkMeta).build()
+    val firework = Entity(EntityType.FIREWORK_ROCKET)
+    val meta = firework.entityMeta as FireworkRocketMeta
+
+    val rand = ThreadLocalRandom.current()
+
+    meta.fireworkInfo = fireworkItemStack
+    firework.updateViewableRule { this.contains(it) }
+    firework.setNoGravity(true)
+    firework.velocity = Vec(rand.nextDouble(0.02), 1.0, rand.nextDouble(0.02))
+
+    this.forEach {
+        it.playSound(Sound.sound(SoundEvent.ENTITY_FIREWORK_ROCKET_LAUNCH, Sound.Source.AMBIENT, 1f, 1f), position)
+    }
+
+    firework.setInstance(instance, position)
+
+    object : MinestomRunnable(repeat = Duration.ofMillis(50), iterations = ticks, coroutineScope = GlobalScope) {
+
+        override suspend fun run() {
+            // acceleration
+            firework.velocity = firework.velocity.apply { x, y, z -> Vec(x * 1.15, y + 0.8, z * 1.15) }
+        }
+
+        override fun cancelled() {
+            sendGroupedPacket(this@showFireworkWithDuration, EntityStatusPacket(firework.entityId, 17))
+
+            firework.remove()
+        }
+
+    }
 }

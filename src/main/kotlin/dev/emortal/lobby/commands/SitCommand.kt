@@ -1,7 +1,6 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.immortal.game.GameManager.logger
 import dev.emortal.lobby.LobbyExtension
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor

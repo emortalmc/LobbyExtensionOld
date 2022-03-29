@@ -1,14 +1,16 @@
 package dev.emortal.lobby.games
 
 import dev.emortal.immortal.ImmortalExtension
+import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.immortal.game.GameOptions
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
+import dev.emortal.immortal.util.MinestomRunnable
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
+import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.coordinate.Pos
@@ -20,11 +22,13 @@ import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.event.entity.EntityPotionAddEvent
 import net.minestom.server.event.entity.EntityPotionRemoveEvent
 import net.minestom.server.event.entity.EntityTickEvent
+import net.minestom.server.event.inventory.InventoryItemChangeEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.PlayerBlockInteractEvent
 import net.minestom.server.event.player.PlayerMoveEvent
 import net.minestom.server.event.player.PlayerPacketEvent
+import net.minestom.server.event.player.PlayerSwapItemEvent
 import net.minestom.server.event.player.PlayerUseItemEvent
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
@@ -32,10 +36,12 @@ import net.minestom.server.item.Material
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
+import net.minestom.server.sound.SoundEvent
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.item.item
+import java.time.Duration
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
@@ -53,8 +59,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
             hologram.setInstance(it.position.add(0.0, 1.0, 0.0), instance)
-            val playerCount = GameManager.gameMap[it.gameName]?.sumOf { it.players.size } ?: 0
-            hologram.setLine(hologram.components.size - 1, Component.text("$playerCount online", NamedTextColor.GRAY))
         }
     }
 
@@ -62,14 +66,14 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     }
 
     override fun playerJoin(player: Player) {
+        npcs.values.forEach {
+            it.addViewer(player)
+        }
+
         val compassItemStack = item(Material.COMPASS) {
             displayName(
                 Component.text("Game Selector", NamedTextColor.GOLD).noItalic()
             )
-        }
-
-        npcs.values.forEach {
-            it.addViewer(player)
         }
 
         player.inventory.setItemStack(4, compassItemStack)
@@ -91,10 +95,14 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         eventNode.listenOnly<InventoryPreClickEvent> {
             isCancelled = true
         }
+        eventNode.listenOnly<PlayerSwapItemEvent> {
+            isCancelled = true
+        }
 
         eventNode.listenOnly<PlayerUseItemEvent> {
             if (itemStack.material == Material.COMPASS) {
-                player.chat("/play")
+                player.openInventory(LobbyExtension.gameSelectorGUI.inventory)
+                player.playSound(Sound.sound(SoundEvent.UI_TOAST_IN, Sound.Source.MASTER, 1f, 1f))
             }
         }
 
@@ -119,9 +127,9 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             }
         }
 
-        eventNode.listenOnly<EntityTickEvent> {
+        //eventNode.listenOnly<EntityTickEvent> {
 
-        }
+        //}
 
         eventNode.listenOnly<PlayerPacketEvent> {
             if (packet is ClientSteerVehiclePacket) {
@@ -187,22 +195,20 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         }
     }
 
-    fun refreshHolo(game: Game) {
-        val gameName = game.gameTypeInfo.gameName
-        val gameListing = ImmortalExtension.gameListingConfig.gameListings[gameName] ?: return
+    fun refreshHolo(gameName: String, players: Int) {
+        val gameListing = LobbyExtension.gameListingConfig.gameListings[gameName] ?: return
         if (!gameListing.itemVisible) return
 
         val hologram = holograms[gameName] ?: return
-        val playerCount = GameManager.gameMap[gameName]?.sumOf { it.players.size } ?: 0
 
-        hologram.setLine(hologram.components.size - 1, Component.text("$playerCount online", NamedTextColor.GRAY))
+        hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
     }
 
     override fun instanceCreate(): Instance {
-        //val newInstance = Manager.instance.createInstanceContainer()
-        //newInstance.chunkLoader = AnvilLoader("lobby")
-        //return newInstance
-        return Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
+        val newInstance = Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
+        newInstance.timeRate = 0
+        newInstance.timeUpdate = null
+        return newInstance
     }
 
     // Lobby is not winnable
