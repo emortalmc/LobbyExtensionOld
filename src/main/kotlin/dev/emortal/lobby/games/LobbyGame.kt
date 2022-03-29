@@ -59,6 +59,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
             hologram.setInstance(it.position.add(0.0, 1.0, 0.0), instance)
+            hologram.setLine(it.hologramLines.size - 1, Component.text("${LobbyExtension.playerCountCache[it.gameName] ?: 0} online", NamedTextColor.GRAY))
         }
     }
 
