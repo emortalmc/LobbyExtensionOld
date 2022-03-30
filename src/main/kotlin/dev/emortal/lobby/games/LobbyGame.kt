@@ -58,7 +58,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         npcs.values.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
-            hologram.setInstance(it.position.add(0.0, 1.0, 0.0), instance)
+            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance)
             hologram.setLine(it.hologramLines.size - 1, Component.text("${LobbyExtension.playerCountCache[it.gameName] ?: 0} online", NamedTextColor.GRAY))
         }
     }
@@ -209,6 +209,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         val newInstance = Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
+        newInstance.setBlock(0, 69, -33, Block.AIR)
         return newInstance
     }
 
