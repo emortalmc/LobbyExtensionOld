@@ -51,10 +51,10 @@ class LobbyExtension : Extension() {
 
     companion object {
         val occupiedSeats = mutableSetOf<Point>()
-        val armourStandSeatMap = hashMapOf<Entity, Point>()
-        val playerMusicInvMap = hashMapOf<Player, Inventory>()
+        val armourStandSeatMap = ConcurrentHashMap<Entity, Point>()
+        val playerMusicInvMap = ConcurrentHashMap<Player, Inventory>()
 
-        val npcs = mutableMapOf<String, PacketNPC>()
+        val npcs = ConcurrentHashMap<String, PacketNPC>()
 
         lateinit var gameListingConfig: GameListingConfig
         val gameListingPath = Path.of("./gameListings.json")

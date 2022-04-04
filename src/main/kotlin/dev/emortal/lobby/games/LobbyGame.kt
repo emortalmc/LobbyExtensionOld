@@ -1,15 +1,15 @@
 package dev.emortal.lobby.games
 
-import dev.emortal.immortal.ImmortalExtension
 import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.Game
-import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
-import dev.emortal.immortal.util.MinestomRunnable
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
+import dev.emortal.lobby.util.showFireworkWithDuration
+import dev.emortal.rayfast.casting.grid.GridCast
+import dev.emortal.rayfast.vector.Vector3d
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -26,13 +26,19 @@ import net.minestom.server.event.inventory.InventoryItemChangeEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.PlayerBlockInteractEvent
+import net.minestom.server.event.player.PlayerEntityInteractEvent
 import net.minestom.server.event.player.PlayerMoveEvent
 import net.minestom.server.event.player.PlayerPacketEvent
+import net.minestom.server.event.player.PlayerStartSneakingEvent
+import net.minestom.server.event.player.PlayerStopSneakingEvent
 import net.minestom.server.event.player.PlayerSwapItemEvent
 import net.minestom.server.event.player.PlayerUseItemEvent
+import net.minestom.server.event.player.PlayerUseItemOnBlockEvent
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.Material
+import net.minestom.server.item.firework.FireworkEffect
+import net.minestom.server.item.firework.FireworkEffectType
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
 import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
@@ -41,7 +47,10 @@ import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.item.item
+import world.cepi.kstom.util.asPos
+import java.awt.Color
 import java.time.Duration
+import java.util.concurrent.ThreadLocalRandom
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
@@ -80,6 +89,15 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         player.inventory.setItemStack(4, compassItemStack)
 
         player.isAllowFlying = player.hasLuckPermission("lobby.fly")
+
+        if (player.hasLuckPermission("lobby.fireworks")) {
+            val fireworkItemstack = item(Material.FIREWORK_ROCKET) {
+                displayName(
+                    Component.text("Launch a firework", NamedTextColor.LIGHT_PURPLE).noItalic()
+                )
+            }
+            player.inventory.setItemStack(8, fireworkItemstack)
+        }
     }
 
     override fun playerLeave(player: Player) {
@@ -98,6 +116,64 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         }
         eventNode.listenOnly<PlayerSwapItemEvent> {
             isCancelled = true
+        }
+
+        @Suppress("INACCESSIBLE_TYPE")
+        eventNode.listenOnly<PlayerUseItemOnBlockEvent> {
+
+
+            if (itemStack.material == Material.FIREWORK_ROCKET) {
+                var hitPos: Pos? = null
+                val pos = player.position
+                val dir = player.position.direction()
+                val gridIterator: Iterator<Vector3d> = GridCast.createExactGridIterator(
+                    pos.x(), pos.y() + 1.5, pos.z(),
+                    dir.x(), dir.y(), dir.z(),
+                    1.0, 4.0
+                )
+
+                while (gridIterator.hasNext()) {
+                    val gridUnit = gridIterator.next()
+                    val pos = Pos(gridUnit[0], gridUnit[1], gridUnit[2])
+
+                    try {
+                        val hitBlock = instance.getBlock(pos)
+
+                        if (hitBlock.isSolid) {
+                            hitPos = pos
+                            break
+                        }
+                    } catch (e: NullPointerException) {
+                        // catch if chunk is not loaded
+                        break
+                    }
+                }
+
+                val random = ThreadLocalRandom.current()
+                val effects = mutableListOf(
+                    FireworkEffect(
+                        random.nextBoolean(),
+                        random.nextBoolean(),
+                        FireworkEffectType.values().random(),
+                        listOf(net.minestom.server.color.Color(Color.HSBtoRGB(random.nextFloat(), 1f, 1f))),
+                        listOf(net.minestom.server.color.Color(Color.HSBtoRGB(random.nextFloat(), 1f, 1f)))
+                    )
+                )
+                players.showFireworkWithDuration(instance, hitPos?.add(0.0, 0.5, 0.0) ?: position.asPos().add(0.5, 0.5, 0.5), 20 + random.nextInt(0, 11), effects)
+            }
+        }
+
+        eventNode.listenOnly<PlayerEntityInteractEvent> {
+            val interactedPlayer = target as? Player ?: return@listenOnly
+            if (player.hasLuckPermission("lobby.pickupplayer")) {
+                player.addPassenger(interactedPlayer)
+            }
+        }
+        eventNode.listenOnly<PlayerStopSneakingEvent> {
+            player.passengers.forEach {
+                player.removePassenger(it)
+                it.velocity = this.player.position.direction().mul(30.0)
+            }
         }
 
         eventNode.listenOnly<PlayerUseItemEvent> {
@@ -136,7 +212,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             if (packet is ClientSteerVehiclePacket) {
                 val steerPacket = packet as ClientSteerVehiclePacket
                 if (steerPacket.flags.toInt() == 2) {
-                    if (player.vehicle != null) {
+                    if (player.vehicle != null || player.vehicle !is Player) {
                         val entity = player.vehicle!!
                         entity.removePassenger(player)
 
