@@ -2,16 +2,9 @@ package dev.emortal.lobby
 
 import dev.emortal.immortal.config.ConfigHelper
 import dev.emortal.immortal.config.GameOptions
-import dev.emortal.immortal.event.GameDestroyEvent
-import dev.emortal.immortal.event.PlayerJoinGameEvent
-import dev.emortal.immortal.event.PlayerLeaveGameEvent
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.immortal.game.GameManager.joinGame
 import dev.emortal.immortal.game.WhenToRegisterEvents
-import dev.emortal.immortal.inventory.GUI
 import dev.emortal.immortal.npc.PacketNPC
-import dev.emortal.immortal.util.MinestomRunnable
-import dev.emortal.immortal.util.RedisStorage
 import dev.emortal.immortal.util.RedisStorage.redisson
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.config.GameListingConfig
@@ -19,26 +12,22 @@ import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
 import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.showFirework
-import dev.emortal.nbstom.NBS
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.GlobalScope
-import net.bytebuddy.agent.builder.AgentBuilder.CircularityLock.Global
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.color.Color
-import net.minestom.server.coordinate.Point
-import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.PlayerSkin
-import net.minestom.server.event.player.*
+import net.minestom.server.event.player.PlayerDisconnectEvent
+import net.minestom.server.event.player.PlayerLoginEvent
+import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
-import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
+import net.minestom.server.utils.NamespaceID
+import net.minestom.server.world.DimensionType
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.event.listenOnly
@@ -50,8 +39,6 @@ import java.util.concurrent.ConcurrentHashMap
 class LobbyExtension : Extension() {
 
     companion object {
-        val occupiedSeats = mutableSetOf<Point>()
-        val armourStandSeatMap = ConcurrentHashMap<Entity, Point>()
         val playerMusicInvMap = ConcurrentHashMap<Player, Inventory>()
 
         val npcs = ConcurrentHashMap<String, PacketNPC>()
@@ -59,9 +46,9 @@ class LobbyExtension : Extension() {
         lateinit var gameListingConfig: GameListingConfig
         val gameListingPath = Path.of("./gameListings.json")
 
-        lateinit var lobbyInstance: InstanceContainer
-
         lateinit var gameSelectorGUI: GameSelectorGUI
+
+        lateinit var backroomsInstance: InstanceContainer
 
         val playerCountCache = ConcurrentHashMap<String, Int>()
     }
@@ -70,9 +57,12 @@ class LobbyExtension : Extension() {
         gameListingConfig = ConfigHelper.initConfigFile(gameListingPath, GameListingConfig())
         gameSelectorGUI = GameSelectorGUI()
 
-        lobbyInstance = Manager.instance.createInstanceContainer()
-        lobbyInstance.chunkLoader = AnvilLoader("lobby")
-        lobbyInstance.setTag(GameManager.doNotUnregisterTag, 1)
+        val backroomsDimension = DimensionType.builder(NamespaceID.from("backrooms")).ambientLight(0.04f).build()
+        Manager.dimensionType.addDimension(backroomsDimension)
+        backroomsInstance = Manager.instance.createInstanceContainer(backroomsDimension)
+        backroomsInstance.setGenerator {
+            BackroomsGenerator.generateRoom(it, 50)
+        }
 
         GameManager.registerGame<LobbyGame>(
             "lobby",
@@ -85,7 +75,8 @@ class LobbyExtension : Extension() {
                 minPlayers = 0,
                 countdownSeconds = 0,
                 canJoinDuringGame = true,
-                showScoreboard = false
+                showScoreboard = false,
+                allowsSpectators = false
             )
         )
 
@@ -103,7 +94,7 @@ class LobbyExtension : Extension() {
             )
         }
 
-        redisson.getTopic("playercount").addListenerAsync(String::class.java) { channel, msg ->
+        redisson?.getTopic("playercount")?.addListenerAsync(String::class.java) { channel, msg ->
             val args = msg.split(" ")
             val gameName = args[0]
             val playerCount = args[1].toInt()
@@ -122,7 +113,7 @@ class LobbyExtension : Extension() {
             playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
         }
 
-        val susNBS = NBS(Path.of("./nbs/sus.nbs"))
+        /*val susNBS = NBS(Path.of("./nbs/sus.nbs"))
         eventNode.listenOnly<PlayerChatEvent> {
             if (message.lowercase().contains("sus")) {
                 NBS.stopPlaying(player)
@@ -131,13 +122,13 @@ class LobbyExtension : Extension() {
 
                 NBS.play(susNBS, player)
             }
-        }
+        }*/
 
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {
 
                 if (player.username == "brayjamin") {
-                    NBS.play(susNBS, player)
+                    //NBS.play(susNBS, player)
                     player.sendMessage("sus")
                 }
 
@@ -178,6 +169,8 @@ class LobbyExtension : Extension() {
         SpawnCommand.register()
         SitCommand.register()
         MountCommand.register()
+        FireworkCommand.register()
+        LoopCommand.register()
 
         DiscCommand.refreshSongs()
 
@@ -189,6 +182,8 @@ class LobbyExtension : Extension() {
         SpawnCommand.unregister()
         SitCommand.unregister()
         MountCommand.unregister()
+        FireworkCommand.unregister()
+        LoopCommand.unregister()
 
         logger.info("[LobbyExtension] Terminated!")
     }

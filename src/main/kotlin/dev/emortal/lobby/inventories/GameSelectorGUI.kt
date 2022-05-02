@@ -13,7 +13,6 @@ import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.adventure.noItalic
-import world.cepi.kstom.item.item
 import world.cepi.kstom.util.setItemStacks
 
 class GameSelectorGUI : GUI() {
@@ -66,12 +65,15 @@ class GameSelectorGUI : GUI() {
             "<green>● <bold>${players}</bold> playing"
         ))
 
-        return item(gameListing.item) {
-            displayName(gameListing.npcTitles.last().asMini().noItalic())
-            lore(loreList.map { loreLine -> loreLine.asMini().noItalic() })
-            hideFlag(*ItemHideFlag.values())
-            setTag(GameManager.gameNameTag, gameName)
-        }
+        return ItemStack.builder(gameListing.item)
+            .meta {
+                it.displayName(gameListing.npcTitles.last().asMini().noItalic())
+                it.lore(loreList.map { loreLine -> loreLine.asMini().noItalic() })
+                it.hideFlag(*ItemHideFlag.values())
+                it.setTag(GameManager.gameNameTag, gameName)
+                it
+            }
+            .build()
     }
 
 }

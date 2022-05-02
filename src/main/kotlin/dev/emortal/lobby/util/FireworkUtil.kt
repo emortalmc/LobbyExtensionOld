@@ -1,7 +1,6 @@
 package dev.emortal.lobby.util
 
 import dev.emortal.immortal.util.MinestomRunnable
-import dev.emortal.nbstom.MinestomRunnable.Companion.defaultTimer
 import kotlinx.coroutines.GlobalScope
 import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.sound.Sound

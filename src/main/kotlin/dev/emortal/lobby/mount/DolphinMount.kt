@@ -27,10 +27,7 @@ class DolphinMount : Mount(Component.text("Dolphin", NamedTextColor.AQUA)) {
         }
 
         val playerDir = player.position.direction()
-
-
-        dolphin.setView(player.position.yaw, player.position.pitch)
-
+        //dolphin.setView(player.position.yaw, player.position.pitch)
 
         dolphin.velocity = playerDir.mul(forward.toDouble())
             .add(playerDir.withY(0.0).rotateAroundY(90 * PI/180).mul(sideways.toDouble()))

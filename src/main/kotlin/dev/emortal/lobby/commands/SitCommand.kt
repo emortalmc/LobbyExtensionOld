@@ -1,7 +1,9 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.lobby.LobbyExtension
+import dev.emortal.immortal.game.GameManager.game
+import dev.emortal.lobby.games.LobbyGame
+import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.coordinate.Pos
@@ -10,8 +12,7 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.block.Block
-import org.slf4j.LoggerFactory
-import world.cepi.kstom.Manager
+import net.minestom.server.sound.SoundEvent
 import world.cepi.kstom.command.kommand.Kommand
 
 object SitCommand : Kommand({
@@ -52,12 +53,22 @@ object SitCommand : Kommand({
             player.position.blockZ().toDouble()
         )
 
-        if (LobbyExtension.occupiedSeats.contains(roundedPos)) {
+        val game = player.game as LobbyGame
+
+        if (game.occupiedSeats.contains(roundedPos)) {
             player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
             return@default
         }
 
-        LobbyExtension.occupiedSeats.add(roundedPos)
+        if (MountCommand.mountMap.containsKey(player)) {
+            player.playSound(Sound.sound(SoundEvent.ENTITY_DOLPHIN_PLAY, Sound.Source.MASTER, 1f, 1f))
+            player.sendMessage(
+                Component.text()
+                    .append(Component.text("RC Dolphin (⌐▨_▨)", NamedTextColor.RED))
+            )
+        }
+
+        game.occupiedSeats.add(roundedPos)
 
         val armourStand = Entity(EntityType.ARMOR_STAND)
         val armourStandMeta = armourStand.entityMeta as ArmorStandMeta
@@ -75,7 +86,7 @@ object SitCommand : Kommand({
                 armourStand.addPassenger(player)
             }
 
-        LobbyExtension.armourStandSeatMap[armourStand] = roundedPos
+        game.armourStandSeatMap[armourStand] = roundedPos
     }
 
 }, "sit")

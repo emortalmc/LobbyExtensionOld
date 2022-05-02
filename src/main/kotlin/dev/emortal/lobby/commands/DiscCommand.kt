@@ -21,16 +21,12 @@ import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.command.arguments.literal
 import world.cepi.kstom.command.arguments.suggest
 import world.cepi.kstom.command.kommand.Kommand
-import java.lang.IllegalArgumentException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
-import java.util.stream.Collector
 import java.util.stream.Collectors
 import kotlin.io.path.nameWithoutExtension
-import kotlin.math.roundToInt
 import kotlin.math.roundToLong
-import kotlin.reflect.jvm.internal.impl.descriptors.Named
 
 object DiscCommand : Kommand({
 
@@ -92,7 +88,13 @@ object DiscCommand : Kommand({
             player.playSound(Sound.sound(nowPlayingDisc.sound, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
 
             stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
-                player.chat("/disc stop")
+
+                if (player.hasTag(LoopCommand.loopTag)) {
+                    player.chat("/disc ${nowPlayingDisc.shortName}")
+                } else {
+                    player.chat("/disc stop")
+                }
+
             }.delay(Duration.ofSeconds(nowPlayingDisc.length.toLong())).schedule()
         } catch (e: IllegalArgumentException) {
             if (!nbsSongs.contains(disc)) {
@@ -101,7 +103,7 @@ object DiscCommand : Kommand({
             }
 
             val nbs = NBS(Path.of("./nbs/${disc}.nbs"))
-            NBS.play(nbs, player)
+            NBS.playWithParticles(nbs, player)
 
             if (disc == "DJ Got Us Fallin' in Love") {
                 Manager.scheduler.buildTask {
@@ -113,7 +115,13 @@ object DiscCommand : Kommand({
             }
 
             stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
-                player.chat("/disc stop")
+
+                if (player.hasTag(LoopCommand.loopTag)) {
+                    player.chat("/disc ${disc}")
+                } else {
+                    player.chat("/disc stop")
+                }
+
             }.delay(Duration.ofSeconds((nbs.length / nbs.tps).roundToLong())).schedule()
 
             discName = "${nbs.originalAuthor.ifEmpty { nbs.author }} - ${nbs.songName}"
