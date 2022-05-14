@@ -10,14 +10,13 @@ plugins {
 
 repositories {
     mavenCentral()
-    maven(url = "https://jitpack.io")
-    maven(url = "https://repo.spongepowered.org/maven")
+    maven("https://jitpack.io")
 }
 
 dependencies {
     //compileOnly(kotlin("stdlib"))
 
-    compileOnly("com.github.Minestom:Minestom:c8ae194f7d")
+    compileOnly("com.github.Minestom:Minestom:64de8f87c0")
     compileOnly("com.github.EmortalMC:Immortal:e9c693da83")
 
     compileOnly("com.github.EmortalMC:NBStom:18bc9744a7")

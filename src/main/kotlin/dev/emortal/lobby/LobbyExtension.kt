@@ -22,12 +22,9 @@ import net.minestom.server.event.player.PlayerDisconnectEvent
 import net.minestom.server.event.player.PlayerLoginEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
-import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
-import net.minestom.server.utils.NamespaceID
-import net.minestom.server.world.DimensionType
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.event.listenOnly
@@ -48,21 +45,12 @@ class LobbyExtension : Extension() {
 
         lateinit var gameSelectorGUI: GameSelectorGUI
 
-        lateinit var backroomsInstance: InstanceContainer
-
         val playerCountCache = ConcurrentHashMap<String, Int>()
     }
 
     override fun initialize() {
         gameListingConfig = ConfigHelper.initConfigFile(gameListingPath, GameListingConfig())
         gameSelectorGUI = GameSelectorGUI()
-
-        val backroomsDimension = DimensionType.builder(NamespaceID.from("backrooms")).ambientLight(0.04f).build()
-        Manager.dimensionType.addDimension(backroomsDimension)
-        backroomsInstance = Manager.instance.createInstanceContainer(backroomsDimension)
-        backroomsInstance.setGenerator {
-            BackroomsGenerator.generateRoom(it, 50)
-        }
 
         GameManager.registerGame<LobbyGame>(
             "lobby",

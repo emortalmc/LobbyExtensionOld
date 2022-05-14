@@ -14,12 +14,15 @@ object MountCommand : Kommand({
 
     onlyPlayers
 
-    // If no arguments given, open inventory
+    condition {
+        sender.hasLuckPermission("lobby.mount")
+    }
+
+    playerCallbackFailMessage = {
+        it.sendMessage(Component.text("No permission", NamedTextColor.RED))
+    }
+
     default {
-        if (!sender.hasLuckPermission("lobby.mount")) {
-            sender.sendMessage(Component.text("No permission", NamedTextColor.RED))
-            return@default
-        }
         if (!player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
             player.sendActionBar(Component.text("Not in a lobby!", NamedTextColor.RED))
             return@default
