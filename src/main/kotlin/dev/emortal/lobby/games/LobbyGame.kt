@@ -1,6 +1,7 @@
 package dev.emortal.lobby.games
 
 import dev.emortal.immortal.config.GameOptions
+import dev.emortal.immortal.event.PlayerDismountEvent
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.GameManager.doNotTeleportTag
 import dev.emortal.immortal.game.GameManager.joinGameOrNew
@@ -324,6 +325,10 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         //eventNode.listenOnly<EntityTickEvent> {
 
         //}
+
+        eventNode.listenOnly<PlayerDismountEvent> {
+            if (dismounted !is Player) dismounted.remove()
+        }
 
         eventNode.listenOnly<PlayerPacketEvent> {
             if (packet is ClientSteerVehiclePacket) {
