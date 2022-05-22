@@ -28,6 +28,8 @@ object MountCommand : Kommand({
             return@default
         }
 
+        player.vehicle?.remove()
+
         val mount = DolphinMount()
         mount.spawn(player.instance!!, player)
         mountMap[player]?.destroy()

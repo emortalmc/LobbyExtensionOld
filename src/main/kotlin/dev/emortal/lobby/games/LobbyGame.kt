@@ -326,10 +326,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
         //}
 
-        eventNode.listenOnly<PlayerDismountEvent> {
-            if (dismounted !is Player) dismounted.remove()
-        }
-
         eventNode.listenOnly<PlayerPacketEvent> {
             if (packet is ClientSteerVehiclePacket) {
                 val steerPacket = packet as ClientSteerVehiclePacket
