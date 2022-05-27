@@ -22,7 +22,7 @@ dependencies {
     compileOnly("com.github.EmortalMC:NBStom:18bc9744a7")
     compileOnly("org.redisson:redisson:3.17.0")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.2")
-    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.1")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.2")
     //implementation(files("libs/Blocky-1.0-SNAPSHOT.jar"))
 }
 
