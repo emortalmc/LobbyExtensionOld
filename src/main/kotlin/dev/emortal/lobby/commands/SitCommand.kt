@@ -35,6 +35,8 @@ object SitCommand : Kommand({
             return@default
         }
 
+        if (player.vehicle != null) return@default
+
         var i = 0
         while (true) {
             i++

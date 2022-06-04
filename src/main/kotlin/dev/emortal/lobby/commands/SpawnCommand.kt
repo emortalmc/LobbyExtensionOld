@@ -10,8 +10,8 @@ object SpawnCommand : Kommand({
     onlyPlayers
 
     default {
-        player.vehicle?.removePassenger(player)
         player.vehicle?.remove()
+        
         player.teleport(LobbyGame.spawnPoint).thenRun {
             player.playSound(Sound.sound(SoundEvent.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
         }

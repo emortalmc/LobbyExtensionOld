@@ -1,7 +1,6 @@
 package dev.emortal.lobby.games
 
 import dev.emortal.immortal.config.GameOptions
-import dev.emortal.immortal.event.PlayerDismountEvent
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.GameManager.doNotTeleportTag
 import dev.emortal.immortal.game.GameManager.joinGameOrNew
@@ -32,6 +31,7 @@ import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.instance.AnvilLoader
+import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.batch.AbsoluteBlockBatch
 import net.minestom.server.instance.block.Block
@@ -58,7 +58,9 @@ import world.cepi.particle.renderer.Renderer
 import world.cepi.particle.showParticle
 import java.awt.Color
 import java.time.Duration
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ThreadLocalRandom
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
@@ -424,6 +426,23 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         newInstance.chunkLoader = AnvilLoader("lobby")
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
+        newInstance.enableAutoChunkLoad(false)
+
+        val list = mutableListOf<CompletableFuture<Chunk>>()
+        val radius = 5
+        val countDownLatch = CountDownLatch((radius + 1) * (radius + 1))
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                newInstance.loadChunk(x, z).thenRun {
+                    countDownLatch.countDown()
+                }
+            }
+        }
+
+        countDownLatch
+        instanceLatch.countDown()
+
+        newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
         return newInstance
     }
