@@ -162,6 +162,9 @@ class LobbyExtension : Extension() {
 
         DiscCommand.refreshSongs()
 
+        StartOccurrence.register()
+        BlanksCommand.register()
+
         logger.info("[LobbyExtension] Initialized!")
     }
 
@@ -172,6 +175,9 @@ class LobbyExtension : Extension() {
         MountCommand.unregister()
         FireworkCommand.unregister()
         LoopCommand.unregister()
+
+        StartOccurrence.unregister()
+        BlanksCommand.unregister()
 
         logger.info("[LobbyExtension] Terminated!")
     }

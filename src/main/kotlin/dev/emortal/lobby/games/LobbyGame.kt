@@ -11,6 +11,7 @@ import dev.emortal.immortal.util.MinestomRunnable
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
+import dev.emortal.lobby.occurrences.Occurrence
 import dev.emortal.lobby.util.showFireworkWithDuration
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
@@ -45,12 +46,16 @@ import net.minestom.server.potion.Potion
 import net.minestom.server.potion.PotionEffect
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
+import net.minestom.server.timer.Task
+import net.minestom.server.timer.TaskSchedule
+import org.tinylog.kotlin.Logger
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
 import world.cepi.kstom.util.playSound
+import world.cepi.particle.Particle
 import world.cepi.particle.ParticleType
 import world.cepi.particle.data.OffsetAndSpeed
 import world.cepi.particle.extra.Dust
@@ -74,6 +79,9 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
     override var spawnPosition = spawnPoint
 
+    var currentOccurrence: Occurrence? = null
+    var occurrenceStopTask: Task? = null
+
     val holograms = ConcurrentHashMap<String, MultilineHologram>()
 
     override fun gameStarted() {
@@ -84,111 +92,13 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             hologram.setLine(it.hologramLines.size - 1, Component.text("${LobbyExtension.playerCountCache[it.gameName] ?: 0} online", NamedTextColor.GRAY))
         }
 
-        val connectHologram = MultilineHologram(mutableListOf("<gradient:red:gold><bold>Connect 4".asMini()))
-        connectHologram.setInstance(Pos(18.0, 66.5, -2.0), instance)
-
-        object : MinestomRunnable(coroutineScope = coroutineScope, repeat = Duration.ofMillis(100)) {
-            override suspend fun run() {
-
-                instance.showParticle(
-                    world.cepi.particle.Particle.particle(
-                        type = ParticleType.DUST,
-                        data = OffsetAndSpeed(),
-                        extraData = Dust(1f, 0f, 0f, 0.75f),
-                        count = 1
-                    ),
-                    Renderer.fixedRectangle(Vec(18.5, 66.5, -12.5), Vec(31.5, 66.5, 8.5), step = 1.0)
-                )
-
-            }
-        }
-
-
-        // Connect 4 animation
-        val redTurnTag = Tag.Boolean("redTurn")
-        val gridX = 7
-        val gridY = 6
-
-        val xOffset = 29
-        val yOffset = 65
-        val zOffset = -9
-
-        fun resetBoard() {
-            val batch = AbsoluteBlockBatch()
-            var white = true
-            for (x in 0 until gridX) {
-                for (y in 0 until gridY) {
-                    for (x2 in 0..1) {
-                        for (y2 in 0..1) {
-                            batch.setBlock(xOffset, ((y*2) + y2) + yOffset, (x*2) + x2 + zOffset, if (white) Block.GRAY_CONCRETE else Block.GRAY_WOOL)
-                            batch.setBlock(xOffset - 1, ((y*2) + y2) + yOffset, (x*2) + x2 + zOffset, Block.AIR)
-                        }
-                    }
-
-                    white = !white
-                }
-                white = !white
-            }
-
-            batch.apply(instance, null)
-        }
-
-        fun setGreen() {
-            val batch = AbsoluteBlockBatch()
-            for (z in 0..1) {
-                for (y in 0..7) {
-                    batch.setBlock(xOffset - 1, y + yOffset, z + zOffset + (4*2), Block.LIME_CONCRETE)
-                }
-            }
-            batch.apply(instance, null)
-        }
-        fun spawn4(gridX: Int, red: Boolean) {
-            for (x in 0..1) {
-                for (y in 1..2) {
-                    val entity = Entity(EntityType.FALLING_BLOCK)
-                    val meta = entity.entityMeta as FallingBlockMeta
-                    meta.block = if (red) Block.RED_CONCRETE_POWDER else Block.YELLOW_CONCRETE_POWDER
-                    entity.setInstance(instance, Pos(xOffset - 0.5, y + (gridY * 2) + yOffset + 0.5, x + (gridX * 2) + 0.5 + zOffset))
-                    entity.setTag(redTurnTag, red)
-
-                }
-            }
-        }
-
-        object : MinestomRunnable(coroutineScope = coroutineScope, repeat = Duration.ofMillis(50)) {
-            var redTurn = false
-
-            override suspend fun run() {
-
-                val currentIter = currentIteration.get()
-
-                if (currentIter < 6*30 + 20 && currentIter % 30 == 0) {
-                    spawn4(if (redTurn) 2 else 4, redTurn)
-                    redTurn = !redTurn
-                }
-
-                if (currentIter == 6*30 + 19) {
-                    setGreen()
-                }
-                if (currentIter == 6*30 + 60) {
-                    resetBoard()
-                    currentIteration.set(-1)
-                    redTurn = false
-                }
-            }
-        }
-
-        eventNode.listenOnly<EntityTickEvent> {
-            if (entity.entityType == EntityType.FALLING_BLOCK && gameState == GameState.ENDING) {
-                entity.remove()
-                return@listenOnly
-            }
-
-            if (entity.entityType == EntityType.FALLING_BLOCK && entity.isOnGround) {
-                instance.setBlock(entity.position, if (entity.getTag(redTurnTag)) Block.RED_CONCRETE_POWDER else Block.YELLOW_CONCRETE_POWDER)
-                entity.remove()
-            }
-        }
+        val holeyMoley = MultilineHologram(
+            mutableListOf(
+                "<gradient:gold:yellow><bold>HoleyMoley".asMini(),
+                "<red>Under construction".asMini()
+            )
+        )
+        holeyMoley.setInstance(Pos(18.0, 67.0, -2.0), instance)
 
     }
 
@@ -246,6 +156,78 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             isCancelled = true
         }
 
+        val reenableFlyTag = Tag.Boolean("reenableFly")
+        eventNode.listenOnly<PlayerStartFlyingEvent> {
+            if (player.gameMode != GameMode.ADVENTURE) return@listenOnly
+
+            player.isFlying = false
+            player.isAllowFlying = false
+            player.setTag(reenableFlyTag, true)
+
+            val launchDir = player.position.direction().apply { x, y, z -> Vec(x * 30.0, 20.0, z * 30.0) }
+            player.velocity = launchDir
+            player.playSound(Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 0.6f, 2f))
+            player.playSound(Sound.sound(SoundEvent.BLOCK_FIRE_EXTINGUISH, Sound.Source.MASTER, 0.75f, 1.5f))
+            player.showParticle(
+                Particle.particle(
+                    type = ParticleType.EXPLOSION,
+                    data = OffsetAndSpeed(),
+                    count = 1
+                ), player.position.asVec()
+            )
+
+            var ticks = 0
+            player.scheduler().submitTask {
+                player.showParticle(
+                    Particle.particle(
+                        type = ParticleType.FLAME,
+                        data = OffsetAndSpeed(0.1f, 0.1f, 0.1f, 0.15f),
+                        count = 2
+                    ), player.position.asVec()
+                )
+
+                ticks++
+
+                if (ticks > 8) TaskSchedule.stop()
+                else TaskSchedule.nextTick()
+            }
+        }
+
+        eventNode.listenOnly<PlayerMoveEvent> {
+            if (newPosition.y < 50) {
+                player.teleport(spawnPosition)
+                return@listenOnly
+            }
+
+            if (isOnGround && player.hasTag(reenableFlyTag) && !player.isAllowFlying) {
+                player.isAllowFlying = true
+            }
+
+            /*if (newPosition.y < 62) {
+                // BACKROOMS
+                player.leaveGame()
+                val out = ByteBufOutputStream(ByteBufAllocator.DEFAULT.buffer())
+                out.writeUTF("Connect")
+                out.writeUTF("backrooms")
+                val buffer = out.buffer()
+                val bytes = ByteArray(buffer.readableBytes())
+                buffer.duplicate().readBytes(bytes)
+                out.flush()
+                player.sendPacket(PluginMessagePacket("BungeeCord", bytes))
+            }*/
+
+            val blockUnder = instance.getBlock(newPosition.sub(0.0, 1.0, 0.0))
+
+            if (blockUnder.compare(Block.SLIME_BLOCK)) {
+                player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
+            }
+
+//            if (newPosition.x > 19 && newPosition.x < 31 && newPosition.y < 70 && newPosition.y >= 65.0 && newPosition.z < 9 && newPosition.z > -13) {
+//                player.setTag(doNotTeleportTag, true)
+//                player.joinGameOrNew("connect4")
+//            }
+        }
+
         eventNode.listenOnly<PlayerEntityInteractEvent> {
             if (!player.itemInMainHand.isAir) return@listenOnly
             val interactedPlayer = target as? Player ?: return@listenOnly
@@ -292,41 +274,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                 entity.isGlowing = false
             }
         }
-
-        eventNode.listenOnly<PlayerMoveEvent> {
-            if (newPosition.y < 55) {
-                player.teleport(spawnPosition)
-                return@listenOnly
-            }
-
-            /*if (newPosition.y < 62) {
-                // BACKROOMS
-                player.leaveGame()
-                val out = ByteBufOutputStream(ByteBufAllocator.DEFAULT.buffer())
-                out.writeUTF("Connect")
-                out.writeUTF("backrooms")
-                val buffer = out.buffer()
-                val bytes = ByteArray(buffer.readableBytes())
-                buffer.duplicate().readBytes(bytes)
-                out.flush()
-                player.sendPacket(PluginMessagePacket("BungeeCord", bytes))
-            }*/
-
-            val blockUnder = instance.getBlock(newPosition.sub(0.0, 1.0, 0.0))
-
-            if (blockUnder.compare(Block.SLIME_BLOCK)) {
-                player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
-            }
-
-            if (newPosition.x > 19 && newPosition.x < 31 && newPosition.y < 70 && newPosition.y >= 65.0 && newPosition.z < 9 && newPosition.z > -13) {
-                player.setTag(doNotTeleportTag, true)
-                player.joinGameOrNew("connect4")
-            }
-        }
-
-        //eventNode.listenOnly<EntityTickEvent> {
-
-        //}
 
         eventNode.listenOnly<PlayerPacketEvent> {
             if (packet is ClientSteerVehiclePacket) {
@@ -428,9 +375,9 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         newInstance.timeUpdate = null
         newInstance.enableAutoChunkLoad(false)
 
-        val list = mutableListOf<CompletableFuture<Chunk>>()
         val radius = 5
-        val countDownLatch = CountDownLatch((radius + 1) * (radius + 1))
+        val diameter = radius * 2
+        val countDownLatch = CountDownLatch((diameter + 1) * (diameter + 1))
         for (x in -radius..radius) {
             for (z in -radius..radius) {
                 newInstance.loadChunk(x, z).thenRun {
@@ -439,7 +386,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             }
         }
 
-        countDownLatch
+        countDownLatch.await()
         instanceLatch.countDown()
 
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
