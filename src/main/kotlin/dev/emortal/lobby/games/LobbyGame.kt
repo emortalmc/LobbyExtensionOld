@@ -22,6 +22,7 @@ import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
+import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.entity.metadata.other.FallingBlockMeta
@@ -63,10 +64,8 @@ import world.cepi.particle.renderer.Renderer
 import world.cepi.particle.showParticle
 import java.awt.Color
 import java.time.Duration
-import java.util.concurrent.CompletableFuture
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.CountDownLatch
-import java.util.concurrent.ThreadLocalRandom
+import java.util.concurrent.*
+import kotlin.system.measureTimeMillis
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
@@ -85,6 +84,20 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     val holograms = ConcurrentHashMap<String, MultilineHologram>()
 
     override fun gameStarted() {
+        instance.enableAutoChunkLoad(false)
+
+        val radius = 5
+        val diameter = radius * 2
+        val chunks = (diameter + 1) * (diameter + 1)
+        val countDownLatch = CountDownLatch((diameter + 1) * (diameter + 1))
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                instance.loadChunk(x, z).thenRun {
+                    countDownLatch.countDown()
+                }
+            }
+        }
+
         npcs.values.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
@@ -92,13 +105,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             hologram.setLine(it.hologramLines.size - 1, Component.text("${LobbyExtension.playerCountCache[it.gameName] ?: 0} online", NamedTextColor.GRAY))
         }
 
-        val holeyMoley = MultilineHologram(
-            mutableListOf(
-                "<gradient:gold:yellow><bold>HoleyMoley".asMini(),
-                "<red>Under construction".asMini()
-            )
-        )
-        holeyMoley.setInstance(Pos(18.0, 67.0, -2.0), instance)
 
     }
 
@@ -113,6 +119,9 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         val compassItemStack = ItemStack.builder(Material.COMPASS)
             .displayName(Component.text("Game Selector", NamedTextColor.GOLD).noItalic())
             .build()
+
+        //player.inventory.helmet = ItemStack.of(Material.GOLDEN_HELMET)
+        //player.sendMessage("o7")
 
         player.inventory.setItemStack(4, compassItemStack)
 
@@ -373,22 +382,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         newInstance.chunkLoader = AnvilLoader("lobby")
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
-        newInstance.enableAutoChunkLoad(false)
-
-        val radius = 5
-        val diameter = radius * 2
-        val countDownLatch = CountDownLatch((diameter + 1) * (diameter + 1))
-        for (x in -radius..radius) {
-            for (z in -radius..radius) {
-                newInstance.loadChunk(x, z).thenRun {
-                    countDownLatch.countDown()
-                }
-            }
-        }
-
-        countDownLatch.await()
-        instanceLatch.countDown()
-
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
         return newInstance
