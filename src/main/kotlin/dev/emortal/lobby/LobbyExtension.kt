@@ -151,7 +151,6 @@ class LobbyExtension : Extension() {
             playerMusicInvMap.remove(player)
         }
 
-
         MusicPlayerInventory.init()
         DiscCommand.register()
         SpawnCommand.register()
