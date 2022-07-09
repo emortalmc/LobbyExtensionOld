@@ -72,9 +72,9 @@ fun Collection<Player>.showFireworkWithDuration(
 
     firework.setInstance(instance, position)
 
-    object : MinestomRunnable(repeat = Duration.ofMillis(50), iterations = ticks, coroutineScope = GlobalScope) {
+    object : MinestomRunnable(repeat = Duration.ofMillis(50), iterations = ticks.toLong()) {
 
-        override suspend fun run() {
+        override fun run() {
             // acceleration
             firework.velocity = firework.velocity.apply { x, y, z -> Vec(x * 1.15, y + 0.8, z * 1.15) }
         }

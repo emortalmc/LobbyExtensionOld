@@ -242,6 +242,9 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
             val interactedPlayer = target as? Player ?: return@listenOnly
             if (player.hasLuckPermission("lobby.pickupplayer")) {
                 player.addPassenger(interactedPlayer)
+                if (interactedPlayer.vehicle != null && interactedPlayer.vehicle !is Player) {
+                    interactedPlayer.vehicle?.remove()
+                }
             }
         }
         eventNode.listenOnly<PlayerStopSneakingEvent> {

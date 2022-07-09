@@ -24,9 +24,9 @@ object SitCommand : Kommand({
             return@condition false
         }
         if ((sender as Player).instance?.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
-            return@condition false
+            return@condition true
         }
-        return@condition true
+        return@condition false
     }
 
     default {
