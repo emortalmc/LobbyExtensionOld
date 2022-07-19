@@ -2,12 +2,8 @@ package dev.emortal.lobby.games
 
 import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.Game
-import dev.emortal.immortal.game.GameManager.doNotTeleportTag
-import dev.emortal.immortal.game.GameManager.joinGameOrNew
-import dev.emortal.immortal.game.GameState
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
-import dev.emortal.immortal.util.MinestomRunnable
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
@@ -25,7 +21,6 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
-import net.minestom.server.entity.metadata.other.FallingBlockMeta
 import net.minestom.server.event.entity.EntityPotionAddEvent
 import net.minestom.server.event.entity.EntityPotionRemoveEvent
 import net.minestom.server.event.entity.EntityTickEvent
@@ -33,9 +28,7 @@ import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.instance.AnvilLoader
-import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
-import net.minestom.server.instance.batch.AbsoluteBlockBatch
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
@@ -48,10 +41,7 @@ import net.minestom.server.potion.PotionEffect
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.Task
-import net.minestom.server.timer.TaskSchedule
-import org.tinylog.kotlin.Logger
 import world.cepi.kstom.Manager
-import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
@@ -59,13 +49,11 @@ import world.cepi.kstom.util.playSound
 import world.cepi.particle.Particle
 import world.cepi.particle.ParticleType
 import world.cepi.particle.data.OffsetAndSpeed
-import world.cepi.particle.extra.Dust
-import world.cepi.particle.renderer.Renderer
 import world.cepi.particle.showParticle
 import java.awt.Color
-import java.time.Duration
-import java.util.concurrent.*
-import kotlin.system.measureTimeMillis
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.ThreadLocalRandom
 
 class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
@@ -175,8 +163,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
             val launchDir = player.position.direction().apply { x, y, z -> Vec(x * 30.0, 20.0, z * 30.0) }
             player.velocity = launchDir
-            player.playSound(Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 0.6f, 2f))
-            player.playSound(Sound.sound(SoundEvent.BLOCK_FIRE_EXTINGUISH, Sound.Source.MASTER, 0.75f, 1.5f))
+            player.playSound(Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 0.6f, 1.5f))
             player.showParticle(
                 Particle.particle(
                     type = ParticleType.EXPLOSION,
@@ -184,22 +171,6 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
                     count = 1
                 ), player.position.asVec()
             )
-
-            var ticks = 0
-            player.scheduler().submitTask {
-                player.showParticle(
-                    Particle.particle(
-                        type = ParticleType.FLAME,
-                        data = OffsetAndSpeed(0.1f, 0.1f, 0.1f, 0.15f),
-                        count = 2
-                    ), player.position.asVec()
-                )
-
-                ticks++
-
-                if (ticks > 8) TaskSchedule.stop()
-                else TaskSchedule.nextTick()
-            }
         }
 
         eventNode.listenOnly<PlayerMoveEvent> {

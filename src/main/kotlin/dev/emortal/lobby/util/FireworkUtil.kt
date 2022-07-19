@@ -1,11 +1,7 @@
 package dev.emortal.lobby.util
 
 import dev.emortal.immortal.util.MinestomRunnable
-import kotlinx.coroutines.GlobalScope
-import net.kyori.adventure.audience.Audience
 import net.kyori.adventure.sound.Sound
-import net.minestom.server.Viewable
-import net.minestom.server.adventure.audience.PacketGroupingAudience
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
@@ -21,9 +17,7 @@ import net.minestom.server.network.packet.server.play.EntityStatusPacket
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.PacketUtils.sendGroupedPacket
-import net.minestom.server.utils.PacketUtils.sendPacket
 import world.cepi.kstom.util.playSound
-import java.time.Duration
 import java.util.concurrent.ThreadLocalRandom
 
 fun Player.showFirework(instance: Instance, position: Pos, effects: MutableList<FireworkEffect>) = listOf(this).showFirework(instance, position, effects)

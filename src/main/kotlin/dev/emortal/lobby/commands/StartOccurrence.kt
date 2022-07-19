@@ -4,16 +4,10 @@ import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.game
 import dev.emortal.lobby.games.LobbyGame
 import dev.emortal.lobby.occurrences.ChatOccurrence
-import dev.emortal.lobby.util.showFireworkWithDuration
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.minestom.server.entity.Player
-import net.minestom.server.item.firework.FireworkEffect
-import net.minestom.server.item.firework.FireworkEffectType
 import world.cepi.kstom.command.kommand.Kommand
-import java.awt.Color
 import java.time.Duration
-import java.util.concurrent.ThreadLocalRandom
 
 object StartOccurrence : Kommand({
 
