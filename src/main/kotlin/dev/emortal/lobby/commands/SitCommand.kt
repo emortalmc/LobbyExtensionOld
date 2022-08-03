@@ -2,7 +2,7 @@ package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.game
-import dev.emortal.lobby.games.LobbyGame
+import dev.emortal.lobby.games.LobbyExtensionGame
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -17,7 +17,7 @@ import world.cepi.kstom.command.kommand.Kommand
 
 object SitCommand : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     condition {
         if (sender !is Player) {
@@ -55,7 +55,7 @@ object SitCommand : Kommand({
             player.position.blockZ().toDouble()
         )
 
-        val game = player.game as LobbyGame
+        val game = player.game as LobbyExtensionGame
 
         if (game.occupiedSeats.contains(roundedPos)) {
             player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))

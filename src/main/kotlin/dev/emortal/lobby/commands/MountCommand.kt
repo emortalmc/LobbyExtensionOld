@@ -7,12 +7,13 @@ import dev.emortal.lobby.mount.DolphinMount
 import dev.emortal.lobby.mount.Mount
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import world.cepi.kstom.command.kommand.Kommand
 
 object MountCommand : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     condition {
         sender.hasLuckPermission("lobby.mount")
@@ -28,7 +29,8 @@ object MountCommand : Kommand({
             return@default
         }
 
-        player.vehicle?.remove()
+        if (player.vehicle?.entityType != EntityType.PLAYER) player.vehicle?.remove()
+        else player.vehicle?.removePassenger(player)
 
         val mount = DolphinMount()
         mount.spawn(player.instance!!, player)

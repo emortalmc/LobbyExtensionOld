@@ -1,7 +1,7 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager.game
-import dev.emortal.lobby.games.LobbyGame
+import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.occurrences.ChatOccurrence
 import dev.emortal.lobby.occurrences.ChatOccurrence.Companion.playerCorrectTag
 import net.kyori.adventure.text.Component
@@ -11,7 +11,7 @@ import world.cepi.kstom.command.kommand.Kommand
 
 object BlanksCommand : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     val inputArgument = ArgumentType.StringArray("input")
 
@@ -24,8 +24,8 @@ object BlanksCommand : Kommand({
 
         val input = (!inputArgument).joinToString(separator = " ")
 
-        val lobbyGame = (player.game ?: return@syntax) as? LobbyGame ?: return@syntax
-        val chatOccTag = lobbyGame.instance.getTag(ChatOccurrence.chatOccTag) ?: return@syntax
+        val lobbyGame = (player.game ?: return@syntax) as? LobbyExtensionGame ?: return@syntax
+        val chatOccTag = lobbyGame.instance.get()?.getTag(ChatOccurrence.chatOccTag) ?: return@syntax
 
         if (input != chatOccTag) {
             player.sendMessage(Component.text("That is not the word!", NamedTextColor.RED))

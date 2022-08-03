@@ -4,11 +4,13 @@ import dev.emortal.lobby.util.MusicDisc
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextDecoration
+import net.minestom.server.command.CommandSender
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
 import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
+import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 
 object MusicPlayerInventory {
@@ -55,14 +57,14 @@ object MusicPlayerInventory {
             if (inventoryConditionResult.clickedItem == ItemStack.AIR) return@addInventoryCondition
 
             if (slot == 40) {
-                player.chat("/disc stop")
+                Manager.command.execute(player, "disc stop")
                 return@addInventoryCondition
             }
 
-            val nowPlayingDisc = MusicDisc.fromMaterial(inventoryConditionResult.clickedItem.material)
+            val nowPlayingDisc = MusicDisc.fromMaterial(inventoryConditionResult.clickedItem.material())
                 ?: return@addInventoryCondition
 
-            player.chat("/disc ${nowPlayingDisc.shortName}")
+            Manager.command.execute(player, "disc ${nowPlayingDisc.shortName}")
 
             inventory.title = inventoryTitle.append(
                 "  <gray>Playing: <aqua>${nowPlayingDisc.description}</aqua>".asMini()

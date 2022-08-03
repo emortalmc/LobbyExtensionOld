@@ -2,6 +2,7 @@ package dev.emortal.lobby.games
 
 import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.Game
+import dev.emortal.immortal.game.LobbyGame
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
 import dev.emortal.lobby.LobbyExtension
@@ -9,6 +10,7 @@ import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
 import dev.emortal.lobby.occurrences.Occurrence
 import dev.emortal.lobby.util.showFireworkWithDuration
+import kotlinx.coroutines.NonCancellable.isCancelled
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
@@ -27,7 +29,6 @@ import net.minestom.server.event.entity.EntityTickEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.*
-import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
@@ -55,7 +56,7 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ThreadLocalRandom
 
-class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
+class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
     companion object {
         val spawnPoint = Pos(0.5, 65.0, -0.5, 180f, 0f)
@@ -72,7 +73,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
     val holograms = ConcurrentHashMap<String, MultilineHologram>()
 
     override fun gameStarted() {
-        instance.enableAutoChunkLoad(false)
+        instance.get()?.enableAutoChunkLoad(false)
 
         val radius = 5
         val diameter = radius * 2
@@ -80,7 +81,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         val countDownLatch = CountDownLatch((diameter + 1) * (diameter + 1))
         for (x in -radius..radius) {
             for (z in -radius..radius) {
-                instance.loadChunk(x, z).thenRun {
+                instance.get()?.loadChunk(x, z)?.thenRun {
                     countDownLatch.countDown()
                 }
             }
@@ -89,7 +90,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
         npcs.values.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
-            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance)
+            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance.get()!!)
             hologram.setLine(it.hologramLines.size - 1, Component.text("${LobbyExtension.playerCountCache[it.gameName] ?: 0} online", NamedTextColor.GRAY))
         }
 
@@ -353,7 +354,7 @@ class LobbyGame(gameOptions: GameOptions) : Game(gameOptions) {
 
     override fun instanceCreate(): Instance {
         val newInstance = Manager.instance.createInstanceContainer()
-        newInstance.chunkLoader = AnvilLoader("lobby")
+        newInstance.chunkLoader = LobbyExtension.tntLoader
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)

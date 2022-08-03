@@ -13,7 +13,7 @@ import java.util.concurrent.ThreadLocalRandom
 
 object FireworkCommand : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     condition {
         if (sender !is Player) {

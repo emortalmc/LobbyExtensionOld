@@ -8,7 +8,7 @@ import world.cepi.kstom.command.kommand.Kommand
 
 object LoopCommand : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     default {
 

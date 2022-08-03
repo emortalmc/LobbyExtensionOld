@@ -30,7 +30,7 @@ import kotlin.math.roundToLong
 
 object DiscCommand : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     // If no arguments given, open inventory
     default {
@@ -90,9 +90,9 @@ object DiscCommand : Kommand({
             stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
 
                 if (player.hasTag(LoopCommand.loopTag)) {
-                    player.chat("/disc ${nowPlayingDisc.shortName}")
+                    Manager.command.execute(sender, "disc ${nowPlayingDisc.shortName}")
                 } else {
-                    player.chat("/disc stop")
+                    Manager.command.execute(sender, "disc stop")
                 }
 
             }.delay(Duration.ofSeconds(nowPlayingDisc.length.toLong())).schedule()
@@ -117,9 +117,9 @@ object DiscCommand : Kommand({
             stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
 
                 if (player.hasTag(LoopCommand.loopTag)) {
-                    player.chat("/disc ${disc}")
+                    Manager.command.execute(sender, "disc ${disc}")
                 } else {
-                    player.chat("/disc stop")
+                    Manager.command.execute(sender, "disc stop")
                 }
 
             }.delay(Duration.ofSeconds((nbs.length / nbs.tps).roundToLong())).schedule()
@@ -144,6 +144,7 @@ object DiscCommand : Kommand({
             nbsSongs = Files.list(Path.of("./nbs/")).collect(Collectors.toUnmodifiableList()).map { it.nameWithoutExtension }
             suggestions = MusicDisc.values().map { it.shortName } + nbsSongs
         } catch (e: Exception) {
+            e.printStackTrace()
             nbsSongs = listOf()
         }
     }

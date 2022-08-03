@@ -2,7 +2,7 @@ package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.game
-import dev.emortal.lobby.games.LobbyGame
+import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.occurrences.ChatOccurrence
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -11,7 +11,7 @@ import java.time.Duration
 
 object StartOccurrence : Kommand({
 
-    onlyPlayers
+    onlyPlayers()
 
     default {
         if (!player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
@@ -21,13 +21,13 @@ object StartOccurrence : Kommand({
 
         if (player.username != "emortaldev") return@default
 
-        val lobbyGame = (player.game ?: return@default) as? LobbyGame ?: return@default
+        val lobbyGame = (player.game ?: return@default) as? LobbyExtensionGame ?: return@default
         val occurrence = ChatOccurrence()
         occurrence.start(lobbyGame)
 
-        lobbyGame.occurrenceStopTask = lobbyGame.instance.scheduler().buildTask {
+        lobbyGame.occurrenceStopTask = lobbyGame.instance.get()?.scheduler()?.buildTask {
             lobbyGame.currentOccurrence?.stop(lobbyGame)
-        }.delay(Duration.ofSeconds(40)).schedule()
+        }?.delay(Duration.ofSeconds(40))?.schedule()
 
 
 

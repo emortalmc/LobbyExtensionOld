@@ -16,11 +16,13 @@ repositories {
 dependencies {
     //compileOnly(kotlin("stdlib"))
 
-    compileOnly("com.github.Minestom:Minestom:ba73c742f4")
-    compileOnly("com.github.EmortalMC:Immortal:0844a77dc6")
+    compileOnly("com.github.Minestom:Minestom:08f37400b0")
+    compileOnly("com.github.EmortalMC:Immortal:7d2b822de6")
+    compileOnly("com.github.EmortalMC:TNT:f0680e2013")
 
     compileOnly("com.github.EmortalMC:NBStom:18bc9744a7")
-    compileOnly("org.redisson:redisson:3.17.4")
+    //compileOnly("org.redisson:redisson:3.17.4")
+    compileOnly("org.redisson:redisson:3.17.5")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.3.3")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.2")
     //implementation(files("libs/Blocky-1.0-SNAPSHOT.jar"))
