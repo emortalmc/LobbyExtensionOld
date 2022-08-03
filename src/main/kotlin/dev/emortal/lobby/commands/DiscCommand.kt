@@ -1,10 +1,10 @@
 package dev.emortal.lobby.commands
 
-import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.commands.DiscCommand.nbsSongs
 import dev.emortal.lobby.commands.DiscCommand.playingDiscTag
 import dev.emortal.lobby.commands.DiscCommand.stopPlayingTaskMap
 import dev.emortal.lobby.commands.DiscCommand.suggestions
+import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.MusicDisc
 import dev.emortal.nbstom.NBS
 import net.kyori.adventure.sound.Sound
@@ -12,7 +12,6 @@ import net.kyori.adventure.sound.SoundStop
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.arguments.ArgumentType
-import net.minestom.server.entity.Player
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.Task
@@ -24,6 +23,8 @@ import world.cepi.kstom.command.kommand.Kommand
 import java.nio.file.Files
 import java.nio.file.Path
 import java.time.Duration
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 import java.util.stream.Collectors
 import kotlin.io.path.nameWithoutExtension
 import kotlin.math.roundToLong
@@ -34,10 +35,8 @@ object DiscCommand : Kommand({
 
     // If no arguments given, open inventory
     default {
-        val musicPlayerInventory = LobbyExtension.playerMusicInvMap[player] ?: return@default
-
         player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1f, 2f))
-        player.openInventory(musicPlayerInventory)
+        player.openInventory(MusicPlayerInventory.inventory)
     }
 
     val refresh by literal
@@ -57,7 +56,8 @@ object DiscCommand : Kommand({
             player.removeTag(playingDiscTag)
         }
 
-        stopPlayingTaskMap[player]?.cancel()
+        stopPlayingTaskMap[player.uuid]?.cancel()
+        stopPlayingTaskMap.remove(player.uuid)
         NBS.stopPlaying(player)
     }
 
@@ -75,7 +75,8 @@ object DiscCommand : Kommand({
             player.removeTag(playingDiscTag)
         }
 
-        stopPlayingTaskMap[player]?.cancel()
+        stopPlayingTaskMap[player.uuid]?.cancel()
+        stopPlayingTaskMap.remove(player.uuid)
         NBS.stopPlaying(player)
 
         var discName: String
@@ -87,7 +88,7 @@ object DiscCommand : Kommand({
             player.setTag(playingDiscTag, discValues.indexOf(nowPlayingDisc))
             player.playSound(Sound.sound(nowPlayingDisc.sound, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
 
-            stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
+            stopPlayingTaskMap[player.uuid] = Manager.scheduler.buildTask {
 
                 if (player.hasTag(LoopCommand.loopTag)) {
                     Manager.command.execute(sender, "disc ${nowPlayingDisc.shortName}")
@@ -114,7 +115,7 @@ object DiscCommand : Kommand({
                 }.delay(Duration.ofMillis(5900)).schedule()
             }
 
-            stopPlayingTaskMap[player] = Manager.scheduler.buildTask {
+            stopPlayingTaskMap[player.uuid] = Manager.scheduler.buildTask {
 
                 if (player.hasTag(LoopCommand.loopTag)) {
                     Manager.command.execute(sender, "disc ${disc}")
@@ -133,7 +134,7 @@ object DiscCommand : Kommand({
     }
 }, "disc", "music") {
 
-    val stopPlayingTaskMap = HashMap<Player, Task>()
+    val stopPlayingTaskMap = ConcurrentHashMap<UUID, Task>()
     private val playingDiscTag = Tag.Integer("playingDisc")
 
     private var nbsSongs: List<String> = listOf()

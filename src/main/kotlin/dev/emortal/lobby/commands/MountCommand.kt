@@ -8,8 +8,9 @@ import dev.emortal.lobby.mount.Mount
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.Player
 import world.cepi.kstom.command.kommand.Kommand
+import java.util.*
+import java.util.concurrent.ConcurrentHashMap
 
 object MountCommand : Kommand({
 
@@ -34,11 +35,11 @@ object MountCommand : Kommand({
 
         val mount = DolphinMount()
         mount.spawn(player.instance!!, player)
-        mountMap[player]?.destroy()
-        mountMap[player] = mount
+        mountMap[player.uuid]?.destroy()
+        mountMap[player.uuid] = mount
     }
 }, "mount") {
 
-    val mountMap = mutableMapOf<Player, Mount>()
+    val mountMap = ConcurrentHashMap<UUID, Mount>()
 
 }

@@ -8,7 +8,7 @@ import dev.emortal.immortal.npc.PacketNPC
 import dev.emortal.immortal.util.RedisStorage.redisson
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.config.GameListingConfig
-import dev.emortal.lobby.games.LobbyGame
+import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
 import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.showFirework
@@ -16,29 +16,25 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.color.Color
 import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.Player
 import net.minestom.server.entity.PlayerSkin
-import net.minestom.server.event.player.PlayerDisconnectEvent
-import net.minestom.server.event.player.PlayerLoginEvent
 import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
-import net.minestom.server.inventory.Inventory
+import net.minestom.server.instance.AnvilLoader
+import net.minestom.server.instance.IChunkLoader
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
-import world.cepi.kstom.Manager
+import org.tinylog.kotlin.Logger
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.event.listenOnly
-import world.cepi.kstom.util.clone
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 class LobbyExtension : Extension() {
 
     companion object {
-        val playerMusicInvMap = ConcurrentHashMap<Player, Inventory>()
-
-        val npcs = ConcurrentHashMap<String, PacketNPC>()
+        val npcs = CopyOnWriteArrayList<PacketNPC>()
 
         lateinit var gameListingConfig: GameListingConfig
         val gameListingPath = Path.of("./gameListings.json")
@@ -46,13 +42,18 @@ class LobbyExtension : Extension() {
         lateinit var gameSelectorGUI: GameSelectorGUI
 
         val playerCountCache = ConcurrentHashMap<String, Int>()
+
+        lateinit var sharedLoader: IChunkLoader
     }
 
     override fun initialize() {
         gameListingConfig = ConfigHelper.initConfigFile(gameListingPath, GameListingConfig())
         gameSelectorGUI = GameSelectorGUI()
 
-        GameManager.registerGame<LobbyGame>(
+        Logger.info("Preloading lobby world")
+        sharedLoader = AnvilLoader("./lobby")
+
+        GameManager.registerGame<LobbyExtensionGame>(
             "lobby",
             Component.text("Lobby", NamedTextColor.GREEN),
             showsInSlashPlay = false,
@@ -73,13 +74,13 @@ class LobbyExtension : Extension() {
 
             hologramLines.add(Component.text("0 online", NamedTextColor.GRAY))
 
-            npcs[it.key] = PacketNPC(
+            npcs.add(PacketNPC(
                 it.value.npcPosition,
                 hologramLines,
                 it.key,
                 if (it.value.npcSkinValue.isNotEmpty() && it.value.npcSkinSignature.isNotEmpty()) PlayerSkin(it.value.npcSkinValue, it.value.npcSkinSignature) else null,
                 EntityType.fromNamespaceId(it.value.npcEntityType)
-            )
+            ))
         }
 
         redisson?.getTopic("playercount")?.addListenerAsync(String::class.java) { channel, msg ->
@@ -89,28 +90,12 @@ class LobbyExtension : Extension() {
 
             playerCountCache[gameName] = playerCount
             gameSelectorGUI.refreshPlayers(gameName, playerCount)
-
             val games = GameManager.gameMap["lobby"]!!
             games.forEach {
-                val lobbyGame = it as LobbyGame
+                val lobbyGame = it as LobbyExtensionGame
                 lobbyGame.refreshHolo(gameName, playerCount)
             }
         }
-
-        eventNode.listenOnly<PlayerLoginEvent> {
-            playerMusicInvMap[player] = MusicPlayerInventory.inventory.clone()
-        }
-
-        /*val susNBS = NBS(Path.of("./nbs/sus.nbs"))
-        eventNode.listenOnly<PlayerChatEvent> {
-            if (message.lowercase().contains("sus")) {
-                NBS.stopPlaying(player)
-                DiscCommand.stopPlayingTaskMap[player]?.cancel()
-                DiscCommand.stopPlayingTaskMap.remove(player)
-
-                NBS.play(susNBS, player)
-            }
-        }*/
 
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {
@@ -128,7 +113,7 @@ class LobbyExtension : Extension() {
                         .append("<bold><gradient:gold:light_purple>EmortalMC".asMini())
                 )
 
-                Manager.scheduler.buildTask {
+                player.scheduler().buildTask {
 
                     player.showFirework(
                         player.instance!!,
@@ -145,10 +130,6 @@ class LobbyExtension : Extension() {
                     )
                 }.delay(Duration.ofMillis(500)).schedule()
             }
-        }
-
-        eventNode.listenOnly<PlayerDisconnectEvent> {
-            playerMusicInvMap.remove(player)
         }
 
         MusicPlayerInventory.init()

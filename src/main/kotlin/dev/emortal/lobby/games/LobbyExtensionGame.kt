@@ -1,7 +1,6 @@
 package dev.emortal.lobby.games
 
 import dev.emortal.immortal.config.GameOptions
-import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.game.LobbyGame
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
@@ -10,7 +9,6 @@ import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
 import dev.emortal.lobby.occurrences.Occurrence
 import dev.emortal.lobby.util.showFireworkWithDuration
-import kotlinx.coroutines.NonCancellable.isCancelled
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
@@ -58,14 +56,9 @@ import java.util.concurrent.ThreadLocalRandom
 
 class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
-    companion object {
-        val spawnPoint = Pos(0.5, 65.0, -0.5, 180f, 0f)
-    }
-
-    val occupiedSeats: MutableSet<Point> = ConcurrentHashMap.newKeySet()
     val armourStandSeatMap = ConcurrentHashMap<Entity, Point>()
 
-    override var spawnPosition = spawnPoint
+    override var spawnPosition = Pos(0.5, 65.0, -0.5, 180f, 0f)
 
     var currentOccurrence: Occurrence? = null
     var occurrenceStopTask: Task? = null
@@ -87,7 +80,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
             }
         }
 
-        npcs.values.forEach {
+        npcs.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
             hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance.get()!!)
@@ -98,10 +91,12 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
     }
 
     override fun gameDestroyed() {
+        holograms.clear()
+        armourStandSeatMap.clear()
     }
 
     override fun playerJoin(player: Player) {
-        npcs.values.forEach {
+        npcs.forEach {
             it.addViewer(player)
         }
 
@@ -137,7 +132,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
     }
 
     override fun playerLeave(player: Player) {
-        npcs.values.forEach {
+        npcs.forEach {
             it.removeViewer(player)
         }
     }
@@ -267,11 +262,10 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                         val entity = player.vehicle!!
                         entity.removePassenger(player)
 
-                        mountMap[player]?.destroy()
-                        mountMap.remove(player)
+                        mountMap[player.uuid]?.destroy()
+                        mountMap.remove(player.uuid)
 
                         if (armourStandSeatMap.containsKey(entity)) {
-                            occupiedSeats.remove(armourStandSeatMap[entity])
                             armourStandSeatMap.remove(entity)
                             entity.remove()
                             player.velocity = Vec(0.0, 10.0, 0.0)
@@ -280,7 +274,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                     return@listenOnly
                 }
 
-                val mount = mountMap[player] ?: return@listenOnly
+                val mount = mountMap[player.uuid] ?: return@listenOnly
                 mount.move(player, steerPacket.forward, steerPacket.sideways)
 
             }
@@ -310,10 +304,8 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
             if (block.name().contains("stair", true)) {
                 if (player.vehicle != null) return@listenOnly
-                if (occupiedSeats.contains(blockPosition)) return@listenOnly
+                if (armourStandSeatMap.values.contains(blockPosition)) return@listenOnly
                 if (block.getProperty("half") == "top") return@listenOnly
-
-                occupiedSeats.add(blockPosition)
 
                 val armourStand = Entity(EntityType.ARMOR_STAND)
                 val armourStandMeta = armourStand.entityMeta as ArmorStandMeta
@@ -354,7 +346,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
     override fun instanceCreate(): Instance {
         val newInstance = Manager.instance.createInstanceContainer()
-        newInstance.chunkLoader = LobbyExtension.tntLoader
+        newInstance.chunkLoader = LobbyExtension.sharedLoader
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)

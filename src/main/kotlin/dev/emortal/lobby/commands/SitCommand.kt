@@ -3,7 +3,6 @@ package dev.emortal.lobby.commands
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.game
 import dev.emortal.lobby.games.LobbyExtensionGame
-import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.coordinate.Pos
@@ -12,7 +11,6 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.block.Block
-import net.minestom.server.sound.SoundEvent
 import world.cepi.kstom.command.kommand.Kommand
 
 object SitCommand : Kommand({
@@ -57,20 +55,10 @@ object SitCommand : Kommand({
 
         val game = player.game as LobbyExtensionGame
 
-        if (game.occupiedSeats.contains(roundedPos)) {
+        if (game.armourStandSeatMap.values.contains(roundedPos)) {
             player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
             return@default
         }
-
-        if (MountCommand.mountMap.containsKey(player)) {
-            player.playSound(Sound.sound(SoundEvent.ENTITY_DOLPHIN_PLAY, Sound.Source.MASTER, 1f, 1f))
-            player.sendMessage(
-                Component.text()
-                    .append(Component.text("RC Dolphin (⌐▨_▨)", NamedTextColor.RED))
-            )
-        }
-
-        game.occupiedSeats.add(roundedPos)
 
         val armourStand = Entity(EntityType.ARMOR_STAND)
         val armourStandMeta = armourStand.entityMeta as ArmorStandMeta
