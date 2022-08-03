@@ -354,8 +354,4 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
         return newInstance
     }
 
-    // Lobby is not winnable
-    override fun victory(winningPlayers: Collection<Player>) {
-    }
-
 }

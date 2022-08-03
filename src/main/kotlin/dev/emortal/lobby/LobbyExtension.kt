@@ -12,6 +12,7 @@ import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
 import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.showFirework
+import dev.emortal.tnt.TNTLoader
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.color.Color
@@ -51,7 +52,7 @@ class LobbyExtension : Extension() {
         gameSelectorGUI = GameSelectorGUI()
 
         Logger.info("Preloading lobby world")
-        sharedLoader = AnvilLoader("./lobby")
+        sharedLoader = TNTLoader("./lobby.tnt")
 
         GameManager.registerGame<LobbyExtensionGame>(
             "lobby",

@@ -43,7 +43,7 @@ object DiscCommand : Kommand({
     val stop by literal
 
     val discArgument = ArgumentType.StringArray("disc").suggest {
-        suggestions
+        suggestions.toList()
     }
 
 
@@ -137,16 +137,18 @@ object DiscCommand : Kommand({
     val stopPlayingTaskMap = ConcurrentHashMap<UUID, Task>()
     private val playingDiscTag = Tag.Integer("playingDisc")
 
-    private var nbsSongs: List<String> = listOf()
-    private var suggestions: List<String> = listOf()
+    private var nbsSongs = ConcurrentHashMap.newKeySet<String>()
+    private var suggestions = ConcurrentHashMap.newKeySet<String>()
 
     fun refreshSongs() {
         try {
-            nbsSongs = Files.list(Path.of("./nbs/")).collect(Collectors.toUnmodifiableList()).map { it.nameWithoutExtension }
-            suggestions = MusicDisc.values().map { it.shortName } + nbsSongs
+            nbsSongs.clear()
+            suggestions.clear()
+            nbsSongs.addAll(Files.list(Path.of("./nbs/")).collect(Collectors.toUnmodifiableList()).map { it.nameWithoutExtension })
+            suggestions.addAll(MusicDisc.values().map { it.shortName } + nbsSongs)
         } catch (e: Exception) {
             e.printStackTrace()
-            nbsSongs = listOf()
+            nbsSongs.clear()
         }
     }
 
