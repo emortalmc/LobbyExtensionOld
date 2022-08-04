@@ -3,6 +3,7 @@ package dev.emortal.lobby.inventories
 import dev.emortal.lobby.util.MusicDisc
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
@@ -10,6 +11,7 @@ import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import world.cepi.kstom.Manager
+import world.cepi.kstom.adventure.noItalic
 
 object MusicPlayerInventory {
     val inventory = init()
@@ -32,7 +34,8 @@ object MusicPlayerInventory {
                 .meta {
                     // For some reason the disc author lore requires this hide flag
                     it.hideFlag(ItemHideFlag.HIDE_POTION_EFFECTS)
-                    it
+
+                    if (disc == MusicDisc.MUSIC_DISC_WAIT) it.lore(Component.text("where are we now", TextColor.color(46, 17, 46)).noItalic())
                 }
                 .build()
 
