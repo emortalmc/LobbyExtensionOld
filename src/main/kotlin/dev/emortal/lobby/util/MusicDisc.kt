@@ -12,6 +12,7 @@ enum class MusicDisc(
 ) {
     MUSIC_DISC_13(Material.MUSIC_DISC_13, SoundEvent.MUSIC_DISC_13, "13", "C418 - 13", 178),
     MUSIC_DISC_11(Material.MUSIC_DISC_11, SoundEvent.MUSIC_DISC_11, "11", "C418 - 11", 71),
+    MUSIC_DISC_5(Material.MUSIC_DISC_5, SoundEvent.MUSIC_DISC_5, "5", "Samuel Åberg - 5", 178),
     MUSIC_DISC_CAT(Material.MUSIC_DISC_CAT, SoundEvent.MUSIC_DISC_CAT, "cat", "C418 - cat", 185),
     MUSIC_DISC_BLOCKS(Material.MUSIC_DISC_BLOCKS, SoundEvent.MUSIC_DISC_BLOCKS, "blocks", "C418 - blocks", 345),
     MUSIC_DISC_CHIRP(Material.MUSIC_DISC_CHIRP, SoundEvent.MUSIC_DISC_CHIRP, "chirp", "C418 - chirp", 185),

@@ -17,7 +17,7 @@ dependencies {
     //compileOnly(kotlin("stdlib"))
 
     compileOnly("com.github.Minestom:Minestom:08f37400b0")
-    compileOnly("com.github.EmortalMC:Immortal:7d2b822de6")
+    compileOnly("com.github.EmortalMC:Immortal:69d17e00a0")
     compileOnly("com.github.EmortalMC:TNT:f0680e2013")
 
     compileOnly("com.github.EmortalMC:NBStom:18bc9744a7")
