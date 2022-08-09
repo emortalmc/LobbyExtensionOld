@@ -15,7 +15,9 @@ import dev.emortal.lobby.util.showFirework
 import dev.emortal.tnt.TNTLoader
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.color.Color
+import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.PlayerSkin
 import net.minestom.server.event.player.PlayerSpawnEvent
@@ -36,6 +38,7 @@ class LobbyExtension : Extension() {
 
     companion object {
         val npcs = CopyOnWriteArrayList<PacketNPC>()
+        val oldNpcs = CopyOnWriteArrayList<PacketNPC>()
 
         lateinit var gameListingConfig: GameListingConfig
         val gameListingPath = Path.of("./gameListings.json")
@@ -45,6 +48,7 @@ class LobbyExtension : Extension() {
         val playerCountCache = ConcurrentHashMap<String, Int>()
 
         lateinit var sharedLoader: IChunkLoader
+        lateinit var oldSharedLoader: IChunkLoader
     }
 
     override fun initialize() {
@@ -67,6 +71,31 @@ class LobbyExtension : Extension() {
                 canJoinDuringGame = true,
                 showScoreboard = false,
                 allowsSpectators = false
+            )
+        )
+
+        oldNpcs.add(
+            PacketNPC(
+                Pos(-8.5, 100.0, 5.5),
+                listOf(Component.text("Block Sumo", NamedTextColor.GOLD, TextDecoration.BOLD)),
+                "blocksumo",
+                PlayerSkin("ewogICJ0aW1lc3RhbXAiIDogMTY0ODk0Njk5OTE3OSwKICAicHJvZmlsZUlkIiA6ICI3YmQ1YjQ1OTFlNmI0NzUzODI3NDFmYmQyZmU5YTRkNSIsCiAgInByb2ZpbGVOYW1lIiA6ICJlbW9ydGFsZGV2IiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzkxZDdhOWMwODBlZTdjYTZkZjlhYWJlM2I5NTliYWE4MThkYWUzYjQ1ZWI3YWRjMTMwZmYyNjU1YzlkOTRjY2YiCiAgICB9LAogICAgIkNBUEUiIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzIzNDBjMGUwM2RkMjRhMTFiMTVhOGIzM2MyYTdlOWUzMmFiYjIwNTFiMjQ4MWQwYmE3ZGVmZDYzNWNhN2E5MzMiCiAgICB9CiAgfQp9", "prWY0EtGdAfqt/nc4Vv/sMBcVEb6WMvaRumTk72e/NKe3dUPxmzlDRm6rw/mEE332JND6+sEI9PmDQ4jj/W41cn/XR/uZIBS+1qLE+57slEQA+ds+/kffKt1358JEV5/qyqCnODLVjwsRwazXJstC3eKNByaTQEyZ2jv/mFeAIAOF+0eQqDaaMGgxdIMRvWR8Nj6uIiBFTdCPIw3OYZ5bxqxm8Epr5PppF+sj7ZK0UyQ5/f1UoO9B/YMUt0OW+UlF3NYcMDs5mrg1N8Ajxvqbe8l0X7eWHgSYd0S/FopSCiVVQOQdZHRyhicmzLv6rE+xW03SB8NRfoaEEvSh8+QiLGMcyETeriwdDzdf8H9Iin3vDkVbMyRTAJ5jL/xDkoFDFR5HtNkrwYBRJoVkiWbnWyoBFofAjmmMmGmT5SFABS7I0iWLEoP4EMzqy84zDbpwOOioQz9UFlZV8AqmyEDv8Hx6px20zdR/jPr7tRQgqRhcPyzNsElcNLhkBfHmhpKffkrEPOAaal49rtB+3Jq+nX8Z1VyEZSW4MYnuq91bFZ1ciMzopYulPwP4cZkrGaqV84lxsqStI5+STi105KP4Bws+XDpop1eyPdDuVL/axq3VVkKeRqSoMv+xRYONGZJQgZ1t0WRIsXk7DLsjtx8QgffxqOwjW5CmZR0liSPfYM=")
+            )
+        )
+        oldNpcs.add(
+            PacketNPC(
+                Pos(-10.5, 100.0, 0.5),
+                listOf(Component.text("Survival", NamedTextColor.GREEN, TextDecoration.BOLD)),
+                "",
+                PlayerSkin("ewogICJ0aW1lc3RhbXAiIDogMTYwOTMyNzE4Njc1MiwKICAicHJvZmlsZUlkIiA6ICI2ZmU4OTUxZDVhY2M0NDc3OWI2ZmYxMmU3YzFlOTQ2MyIsCiAgInByb2ZpbGVOYW1lIiA6ICJlcGhlbXJhIiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzRlNjc2ZmY4ZmRjODk3Zjg5M2I3ZWY4NzliMWU5Y2ZiNmQ4M2I0ZmI0NjBiNDM0MTAyNjQwNTllNzU1YTA4NjEiCiAgICB9CiAgfQp9", "QiPzP+TZqfXZPiXsLHaEBLtkFX2KEWutEc8QE1nVIkNkWL4DpxfKl0Kw0Bd+HnotD3xGFyyORMKLCPhhEP1Ob52dXceGpkgX10XMcGwvZXJnR01eIeGKKHL353uklP3xxDY04MWwIlU55ogeyVTCjE9lC92wwifDDbXR0VSJ8uECN9YtXiG/hStwmjBH6N2KM3yevDNeqRe8DphywgSnIwBhDq9qNkert08mKjVbrEhxgrU8K0TJaZSHEz+ilR930fE8Afcau/zwzsWhsqzoY11wh2poZU9O6AU0C/x5/ZYbddn9iqbj7gx0jmsFq4Ri3BLfBYb7xK6KrZVe4RZz/muBjvSaPwSA7ydJgsXbZ/OakAg2/V7YuEE5AQ2LdCeWBWboFxaXvHFUJkH7vRuUoEoIZoLu5C7mICGZiFw/I84eieau2AOBi2CjTVww4vO1MyeeNGt6tn6j5EUsr3Vlii6AbNwot5lagbzWW0pLdV0c3ux4TTEhaeGSBKAf+ckuOKJjkFfNuyVOKxAzpGUIjJP0NSJ6+xixw7cdz8tOJWWRjGgIv8FQNMAHq2Ut1vXzwclyCD5ZkAjNnK/hFhItsNNXVNLNF9fjfY7zxwgMhlJcLu03Jk3swuPDIU3t13ND2TI31/A4zIyfYcjYVSHn7vg2SrOne2731Pxr1USNaq4=")
+            )
+        )
+        oldNpcs.add(
+            PacketNPC(
+                Pos(-8.5, 100.0, -4.5),
+                listOf(Component.text("Parkour", NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)),
+                "",
+                PlayerSkin("ewogICJ0aW1lc3RhbXAiIDogMTYwOTMyNzE4Njc1MiwKICAicHJvZmlsZUlkIiA6ICI2ZmU4OTUxZDVhY2M0NDc3OWI2ZmYxMmU3YzFlOTQ2MyIsCiAgInByb2ZpbGVOYW1lIiA6ICJlcGhlbXJhIiwKICAic2lnbmF0dXJlUmVxdWlyZWQiIDogdHJ1ZSwKICAidGV4dHVyZXMiIDogewogICAgIlNLSU4iIDogewogICAgICAidXJsIiA6ICJodHRwOi8vdGV4dHVyZXMubWluZWNyYWZ0Lm5ldC90ZXh0dXJlLzRlNjc2ZmY4ZmRjODk3Zjg5M2I3ZWY4NzliMWU5Y2ZiNmQ4M2I0ZmI0NjBiNDM0MTAyNjQwNTllNzU1YTA4NjEiCiAgICB9CiAgfQp9", "QiPzP+TZqfXZPiXsLHaEBLtkFX2KEWutEc8QE1nVIkNkWL4DpxfKl0Kw0Bd+HnotD3xGFyyORMKLCPhhEP1Ob52dXceGpkgX10XMcGwvZXJnR01eIeGKKHL353uklP3xxDY04MWwIlU55ogeyVTCjE9lC92wwifDDbXR0VSJ8uECN9YtXiG/hStwmjBH6N2KM3yevDNeqRe8DphywgSnIwBhDq9qNkert08mKjVbrEhxgrU8K0TJaZSHEz+ilR930fE8Afcau/zwzsWhsqzoY11wh2poZU9O6AU0C/x5/ZYbddn9iqbj7gx0jmsFq4Ri3BLfBYb7xK6KrZVe4RZz/muBjvSaPwSA7ydJgsXbZ/OakAg2/V7YuEE5AQ2LdCeWBWboFxaXvHFUJkH7vRuUoEoIZoLu5C7mICGZiFw/I84eieau2AOBi2CjTVww4vO1MyeeNGt6tn6j5EUsr3Vlii6AbNwot5lagbzWW0pLdV0c3ux4TTEhaeGSBKAf+ckuOKJjkFfNuyVOKxAzpGUIjJP0NSJ6+xixw7cdz8tOJWWRjGgIv8FQNMAHq2Ut1vXzwclyCD5ZkAjNnK/hFhItsNNXVNLNF9fjfY7zxwgMhlJcLu03Jk3swuPDIU3t13ND2TI31/A4zIyfYcjYVSHn7vg2SrOne2731Pxr1USNaq4=")
             )
         )
 
