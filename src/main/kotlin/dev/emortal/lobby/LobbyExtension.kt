@@ -5,6 +5,7 @@ import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.WhenToRegisterEvents
 import dev.emortal.immortal.npc.PacketNPC
+import dev.emortal.immortal.util.RedisStorage
 import dev.emortal.immortal.util.RedisStorage.redisson
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.config.GameListingConfig
@@ -15,6 +16,7 @@ import dev.emortal.lobby.util.showFirework
 import dev.emortal.tnt.TNTLoader
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.color.Color
 import net.minestom.server.coordinate.Pos
@@ -27,12 +29,16 @@ import net.minestom.server.instance.IChunkLoader
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
 import org.tinylog.kotlin.Logger
+import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.event.listenOnly
 import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class LobbyExtension : Extension() {
 
@@ -99,18 +105,47 @@ class LobbyExtension : Extension() {
             )
         )
 
-        gameListingConfig.gameListings.entries.forEach {
+        gameListingConfig.gameListings.entries.forEachIndexed { i, it ->
             val hologramLines = it.value.npcTitles.map(String::asMini).toMutableList()
 
-            hologramLines.add(Component.text("0 online", NamedTextColor.GRAY))
+            hologramLines.add(Component.empty())
+
+            val angle = i * (PI / (gameListingConfig.gameListings.size - 1))
+            val circleSize = 3.7
+            val circleCenter = Pos(0.5, 69.0, -29.0)
+            val lookingPos = Pos(0.5, 69.0, -27.5)
+            val x = cos(angle) * circleSize
+            val z = sin(angle) * circleSize / 1.5
 
             npcs.add(PacketNPC(
-                it.value.npcPosition,
+                circleCenter.add(Pos(x, 0.0, -z)).withLookAt(lookingPos),
                 hologramLines,
                 it.key,
                 if (it.value.npcSkinValue.isNotEmpty() && it.value.npcSkinSignature.isNotEmpty()) PlayerSkin(it.value.npcSkinValue, it.value.npcSkinSignature) else null,
                 EntityType.fromNamespaceId(it.value.npcEntityType)
             ))
+        }
+
+        redisson?.getTopic("unregistergame")?.addListenerAsync(String::class.java) { channel, gameName ->
+            playerCountCache.remove(gameName)
+            gameSelectorGUI.refreshPlayers(gameName, -1)
+            val games = GameManager.gameMap["lobby"]!!
+            games.forEach {
+                val lobbyGame = it as LobbyExtensionGame
+                lobbyGame.refreshHolo(gameName, -1)
+            }
+        }
+        redisson?.getTopic("registergame")?.addListenerAsync(String::class.java) { channel, msg ->
+            val args = msg.split(" ")
+            val gameName = args[0]
+
+            playerCountCache[gameName] = 0
+            gameSelectorGUI.refreshPlayers(gameName, 0)
+            val games = GameManager.gameMap["lobby"]!!
+            games.forEach {
+                val lobbyGame = it as LobbyExtensionGame
+                lobbyGame.refreshHolo(gameName, 0)
+            }
         }
 
         redisson?.getTopic("playercount")?.addListenerAsync(String::class.java) { channel, msg ->
@@ -121,6 +156,7 @@ class LobbyExtension : Extension() {
             playerCountCache[gameName] = playerCount
             gameSelectorGUI.refreshPlayers(gameName, playerCount)
             val games = GameManager.gameMap["lobby"]!!
+
             games.forEach {
                 val lobbyGame = it as LobbyExtensionGame
                 lobbyGame.refreshHolo(gameName, playerCount)
@@ -161,6 +197,12 @@ class LobbyExtension : Extension() {
                 }.delay(Duration.ofMillis(500)).schedule()
             }
         }
+
+        // Periodically refresh game player counts
+        Manager.scheduler.buildTask {
+            playerCountCache.clear()
+            redisson?.getTopic("lobbyhello")?.publishAsync("")
+        }.repeat(Duration.ofMinutes(10)).schedule()
 
         MusicPlayerInventory.init()
         DiscCommand.register()

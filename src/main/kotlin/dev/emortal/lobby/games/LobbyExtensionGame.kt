@@ -13,6 +13,7 @@ import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
@@ -84,7 +85,15 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
             hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance.get()!!)
-            hologram.setLine(it.hologramLines.size - 1, Component.text("${LobbyExtension.playerCountCache[it.gameName] ?: 0} online", NamedTextColor.GRAY))
+
+            val playerCountCache = LobbyExtension.playerCountCache[it.gameName]
+            if (playerCountCache != -1) {
+                hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
+            } else {
+                hologram.setLine(it.hologramLines.size - 1, Component.text("Game unavailable", TextColor.color(217, 54, 54)))
+            }
+
+
         }
 
 
@@ -109,7 +118,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
         player.inventory.setItemStack(4, compassItemStack)
 
-        player.isAllowFlying = player.hasLuckPermission("lobby.fly")
+        //player.isAllowFlying = player.hasLuckPermission("lobby.fly")
 
         if (player.hasLuckPermission("lobby.fireworks")) {
             val fireworkItemstack = ItemStack.builder(Material.FIREWORK_ROCKET)
@@ -119,16 +128,16 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
             player.inventory.setItemStack(8, fireworkItemstack)
         }
 
-        if (player.hasLuckPermission("lobby.doot")) {
-            val trumpetItemstack = ItemStack.builder(Material.PHANTOM_MEMBRANE)
-                .displayName(Component.text("Trumpet", NamedTextColor.YELLOW).noItalic())
-                .meta {
-                    it.customModelData(1)
-                }
-                .build()
-
-            player.inventory.setItemStack(0, trumpetItemstack)
-        }
+//        if (player.hasLuckPermission("lobby.doot")) {
+//            val trumpetItemstack = ItemStack.builder(Material.PHANTOM_MEMBRANE)
+//                .displayName(Component.text("Trumpet", NamedTextColor.YELLOW).noItalic())
+//                .meta {
+//                    it.customModelData(1)
+//                }
+//                .build()
+//
+//            player.inventory.setItemStack(0, trumpetItemstack)
+//        }
     }
 
     override fun playerLeave(player: Player) {
@@ -149,25 +158,25 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
             isCancelled = true
         }
 
-        val reenableFlyTag = Tag.Boolean("reenableFly")
-        eventNode.listenOnly<PlayerStartFlyingEvent> {
-            if (player.gameMode != GameMode.ADVENTURE) return@listenOnly
-
-            player.isFlying = false
-            player.isAllowFlying = false
-            player.setTag(reenableFlyTag, true)
-
-            val launchDir = player.position.direction().apply { x, y, z -> Vec(x * 30.0, 20.0, z * 30.0) }
-            player.velocity = launchDir
-            player.playSound(Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 0.6f, 1.5f))
-            player.showParticle(
-                Particle.particle(
-                    type = ParticleType.EXPLOSION,
-                    data = OffsetAndSpeed(),
-                    count = 1
-                ), player.position.asVec()
-            )
-        }
+//        val reenableFlyTag = Tag.Boolean("reenableFly")
+//        eventNode.listenOnly<PlayerStartFlyingEvent> {
+//            if (player.gameMode != GameMode.ADVENTURE) return@listenOnly
+//
+//            player.isFlying = false
+//            player.isAllowFlying = false
+//            player.setTag(reenableFlyTag, true)
+//
+//            val launchDir = player.position.direction().apply { x, y, z -> Vec(x * 30.0, 20.0, z * 30.0) }
+//            player.velocity = launchDir
+//            player.playSound(Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 0.6f, 1.5f))
+//            player.showParticle(
+//                Particle.particle(
+//                    type = ParticleType.EXPLOSION,
+//                    data = OffsetAndSpeed(),
+//                    count = 1
+//                ), player.position.asVec()
+//            )
+//        }
 
         eventNode.listenOnly<PlayerMoveEvent> {
             if (newPosition.y < 50) {
@@ -175,9 +184,9 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                 return@listenOnly
             }
 
-            if (isOnGround && player.hasTag(reenableFlyTag) && !player.isAllowFlying) {
-                player.isAllowFlying = true
-            }
+//            if (isOnGround && player.hasTag(reenableFlyTag) && !player.isAllowFlying) {
+//                player.isAllowFlying = true
+//            }
 
             /*if (newPosition.y < 62) {
                 // BACKROOMS
@@ -193,6 +202,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
             }*/
 
             val blockUnder = instance.getBlock(newPosition.sub(0.0, 1.0, 0.0))
+            val blockIn = instance.getBlock(newPosition)
 
             if (blockUnder.compare(Block.SLIME_BLOCK)) {
                 player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
@@ -341,7 +351,11 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
         val hologram = holograms[gameName] ?: return
 
-        hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
+        if (players == -1) {
+            hologram.setLine(hologram.components.size - 1, Component.text("Game unavailable", TextColor.color(217, 54, 54)))
+        } else {
+            hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
+        }
     }
 
     override fun instanceCreate(): Instance {

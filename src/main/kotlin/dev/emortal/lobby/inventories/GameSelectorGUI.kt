@@ -26,7 +26,7 @@ class GameSelectorGUI : GUI() {
         LobbyExtension.gameListingConfig.gameListings.forEach {
             if (!it.value.itemVisible) return@forEach
 
-            val item = itemFromListing(it.key, it.value, LobbyExtension.playerCountCache[it.key] ?: 0) ?: return@forEach
+            val item = itemFromListing(it.key, it.value, LobbyExtension.playerCountCache[it.key] ?: 0)
             itemStackMap[it.value.slot] = item
         }
 
@@ -51,18 +51,18 @@ class GameSelectorGUI : GUI() {
         val gameListing = LobbyExtension.gameListingConfig.gameListings[gameName] ?: return
         if (!gameListing.itemVisible) return
 
-        val item = itemFromListing(gameName, gameListing, players) ?: return
+        val item = itemFromListing(gameName, gameListing, players)
         inventory.setItemStack(gameListing.slot, item)
     }
 
-    fun itemFromListing(gameName: String, gameListing: GameListing, players: Int): ItemStack? {
+    fun itemFromListing(gameName: String, gameListing: GameListing, players: Int): ItemStack {
         val loreList = mutableListOf<String>()
         loreList.add("")
         loreList.addAll(gameListing.description)
         loreList.addAll(listOf(
             "",
             "<dark_gray>/play $gameName",
-            "<green>● <bold>${players}</bold> playing"
+            if (players == -1) "<color:#d93636><bold>Game unavailable" else "<green>● <bold>${players}</bold> playing"
         ))
 
         return ItemStack.builder(gameListing.item)
