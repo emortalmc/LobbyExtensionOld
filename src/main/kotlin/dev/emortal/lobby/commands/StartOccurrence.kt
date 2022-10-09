@@ -6,32 +6,32 @@ import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.occurrences.ChatOccurrence
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.minestom.server.command.builder.Command
+import net.minestom.server.entity.Player
 import world.cepi.kstom.command.kommand.Kommand
 import java.time.Duration
 
-object StartOccurrence : Kommand({
+object StartOccurrence : Command("startoccurrence") {
 
-    onlyPlayers()
+    init {
+        setDefaultExecutor { sender, _ ->
+            val player = sender as? Player ?: return@setDefaultExecutor
 
-    default {
-        if (!player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
-            player.sendActionBar(Component.text("Not in a lobby!", NamedTextColor.RED))
-            return@default
+            if (!player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
+                player.sendActionBar(Component.text("Not in a lobby!", NamedTextColor.RED))
+                return@setDefaultExecutor
+            }
+
+            if (player.username != "emortaldev") return@setDefaultExecutor
+
+            val lobbyGame = (player.game ?: return@setDefaultExecutor) as? LobbyExtensionGame ?: return@setDefaultExecutor
+            val occurrence = ChatOccurrence()
+            occurrence.start(lobbyGame)
+
+            lobbyGame.occurrenceStopTask = lobbyGame.instance.get()?.scheduler()?.buildTask {
+                lobbyGame.currentOccurrence?.stop(lobbyGame)
+            }?.delay(Duration.ofSeconds(40))?.schedule()
         }
-
-        if (player.username != "emortaldev") return@default
-
-        val lobbyGame = (player.game ?: return@default) as? LobbyExtensionGame ?: return@default
-        val occurrence = ChatOccurrence()
-        occurrence.start(lobbyGame)
-
-        lobbyGame.occurrenceStopTask = lobbyGame.instance.get()?.scheduler()?.buildTask {
-            lobbyGame.currentOccurrence?.stop(lobbyGame)
-        }?.delay(Duration.ofSeconds(40))?.schedule()
-
-
-
-
     }
 
-}, "startoccurrence")
+}

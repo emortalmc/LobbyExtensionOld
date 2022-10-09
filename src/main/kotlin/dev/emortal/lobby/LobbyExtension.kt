@@ -5,18 +5,15 @@ import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.WhenToRegisterEvents
 import dev.emortal.immortal.npc.PacketNPC
-import dev.emortal.immortal.util.RedisStorage
 import dev.emortal.immortal.util.RedisStorage.redisson
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
-import dev.emortal.lobby.inventories.MusicPlayerInventory
 import dev.emortal.lobby.util.showFirework
-import dev.emortal.tnt.TNTLoader
+import dev.emortal.nbstom.NBS
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextColor
 import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.color.Color
 import net.minestom.server.coordinate.Pos
@@ -31,6 +28,8 @@ import net.minestom.server.item.firework.FireworkEffectType
 import org.tinylog.kotlin.Logger
 import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
+import world.cepi.kstom.command.register
+import world.cepi.kstom.command.unregister
 import world.cepi.kstom.event.listenOnly
 import java.nio.file.Path
 import java.time.Duration
@@ -62,7 +61,7 @@ class LobbyExtension : Extension() {
         gameSelectorGUI = GameSelectorGUI()
 
         Logger.info("Preloading lobby world")
-        sharedLoader = TNTLoader("./lobby.tnt")
+        sharedLoader = AnvilLoader("./lobby")
 
         GameManager.registerGame<LobbyExtensionGame>(
             "lobby",
@@ -167,7 +166,6 @@ class LobbyExtension : Extension() {
             if (isFirstSpawn) {
 
                 if (player.username == "brayjamin") {
-                    //NBS.play(susNBS, player)
                     player.sendMessage("sus")
                 }
 
@@ -198,35 +196,24 @@ class LobbyExtension : Extension() {
             }
         }
 
-        // Periodically refresh game player counts
-        Manager.scheduler.buildTask {
-            playerCountCache.clear()
-            redisson?.getTopic("lobbyhello")?.publishAsync("")
-        }.repeat(Duration.ofMinutes(10)).schedule()
-
-        MusicPlayerInventory.init()
-        DiscCommand.register()
         SpawnCommand.register()
         SitCommand.register()
         MountCommand.register()
         FireworkCommand.register()
-        LoopCommand.register()
-
-        DiscCommand.refreshSongs()
 
         StartOccurrence.register()
         BlanksCommand.register()
+
+        NBS.registerCommands()
 
         logger.info("[LobbyExtension] Initialized!")
     }
 
     override fun terminate() {
-        DiscCommand.unregister()
         SpawnCommand.unregister()
         SitCommand.unregister()
         MountCommand.unregister()
         FireworkCommand.unregister()
-        LoopCommand.unregister()
 
         StartOccurrence.unregister()
         BlanksCommand.unregister()

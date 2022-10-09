@@ -19,7 +19,6 @@ import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.Player
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.event.entity.EntityPotionAddEvent
@@ -46,10 +45,6 @@ import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
 import world.cepi.kstom.util.playSound
-import world.cepi.particle.Particle
-import world.cepi.particle.ParticleType
-import world.cepi.particle.data.OffsetAndSpeed
-import world.cepi.particle.showParticle
 import java.awt.Color
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CountDownLatch
