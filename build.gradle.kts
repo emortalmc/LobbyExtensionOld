@@ -20,7 +20,7 @@ dependencies {
     compileOnly("com.github.EmortalMC:NBStom:303d0ba5ba")
 
     compileOnly("org.redisson:redisson:3.17.7")
-    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }
 
