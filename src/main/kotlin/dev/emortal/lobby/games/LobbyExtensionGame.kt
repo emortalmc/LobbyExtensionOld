@@ -4,6 +4,7 @@ import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.LobbyGame
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
+import dev.emortal.immortal.util.cancel
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.commands.MountCommand.mountMap
@@ -16,27 +17,19 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
-import net.minestom.server.coordinate.Vec
-import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
-import net.minestom.server.entity.metadata.other.ArmorStandMeta
-import net.minestom.server.event.entity.EntityPotionAddEvent
-import net.minestom.server.event.entity.EntityPotionRemoveEvent
 import net.minestom.server.event.entity.EntityTickEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.instance.Instance
-import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
-import net.minestom.server.potion.Potion
-import net.minestom.server.potion.PotionEffect
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.Task
@@ -44,17 +37,17 @@ import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
-import world.cepi.kstom.util.playSound
 import java.awt.Color
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ThreadLocalRandom
 
 class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
-    val armourStandSeatMap = ConcurrentHashMap<Entity, Point>()
+    val armourStandSeatList = CopyOnWriteArraySet<Point>()
 
-    override var spawnPosition = Pos(0.5, 65.0, -0.5, 180f, 0f)
+    override var spawnPosition = Pos(0.5, 65.0, 0.5, 180f, 0f)
 
     var currentOccurrence: Occurrence? = null
     var occurrenceStopTask: Task? = null
@@ -96,7 +89,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
     override fun gameDestroyed() {
         holograms.clear()
-        armourStandSeatMap.clear()
+        armourStandSeatList.clear()
     }
 
     override fun playerJoin(player: Player) {
@@ -143,71 +136,9 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
     override fun registerEvents() {
 
-        eventNode.listenOnly<ItemDropEvent> {
-            isCancelled = true
-        }
-        eventNode.listenOnly<InventoryPreClickEvent> {
-            isCancelled = true
-        }
-        eventNode.listenOnly<PlayerSwapItemEvent> {
-            isCancelled = true
-        }
-
-//        val reenableFlyTag = Tag.Boolean("reenableFly")
-//        eventNode.listenOnly<PlayerStartFlyingEvent> {
-//            if (player.gameMode != GameMode.ADVENTURE) return@listenOnly
-//
-//            player.isFlying = false
-//            player.isAllowFlying = false
-//            player.setTag(reenableFlyTag, true)
-//
-//            val launchDir = player.position.direction().apply { x, y, z -> Vec(x * 30.0, 20.0, z * 30.0) }
-//            player.velocity = launchDir
-//            player.playSound(Sound.sound(SoundEvent.ENTITY_GENERIC_EXPLODE, Sound.Source.MASTER, 0.6f, 1.5f))
-//            player.showParticle(
-//                Particle.particle(
-//                    type = ParticleType.EXPLOSION,
-//                    data = OffsetAndSpeed(),
-//                    count = 1
-//                ), player.position.asVec()
-//            )
-//        }
-
-        eventNode.listenOnly<PlayerMoveEvent> {
-            if (newPosition.y < 50) {
-                player.teleport(spawnPosition)
-                return@listenOnly
-            }
-
-//            if (isOnGround && player.hasTag(reenableFlyTag) && !player.isAllowFlying) {
-//                player.isAllowFlying = true
-//            }
-
-            /*if (newPosition.y < 62) {
-                // BACKROOMS
-                player.leaveGame()
-                val out = ByteBufOutputStream(ByteBufAllocator.DEFAULT.buffer())
-                out.writeUTF("Connect")
-                out.writeUTF("backrooms")
-                val buffer = out.buffer()
-                val bytes = ByteArray(buffer.readableBytes())
-                buffer.duplicate().readBytes(bytes)
-                out.flush()
-                player.sendPacket(PluginMessagePacket("BungeeCord", bytes))
-            }*/
-
-            val blockUnder = instance.getBlock(newPosition.sub(0.0, 1.0, 0.0))
-            val blockIn = instance.getBlock(newPosition)
-
-            if (blockUnder.compare(Block.SLIME_BLOCK)) {
-                player.addEffect(Potion(PotionEffect.JUMP_BOOST, 10, 10, 0))
-            }
-
-//            if (newPosition.x > 19 && newPosition.x < 31 && newPosition.y < 70 && newPosition.y >= 65.0 && newPosition.z < 9 && newPosition.z > -13) {
-//                player.setTag(doNotTeleportTag, true)
-//                player.joinGameOrNew("connect4")
-//            }
-        }
+        eventNode.cancel<ItemDropEvent>()
+        eventNode.cancel<InventoryPreClickEvent>()
+        eventNode.cancel<PlayerSwapItemEvent>()
 
         eventNode.listenOnly<PlayerEntityInteractEvent> {
             if (!player.itemInMainHand.isAir) return@listenOnly
@@ -236,7 +167,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
         eventNode.listenOnly<PlayerUseItemEvent> {
             if (itemStack.material() == Material.COMPASS) {
                 player.openInventory(LobbyExtension.gameSelectorGUI.inventory)
-                player.playSound(Sound.sound(SoundEvent.UI_TOAST_IN, Sound.Source.MASTER, 1f, 1f))
+                player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1f, 1.5f))
             }
 
             if (itemStack.material() == Material.PHANTOM_MEMBRANE) {
@@ -245,17 +176,6 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                 instance.getNearbyEntities(player.position, 8.0).filter { it.entityType == EntityType.PLAYER && it != player }.forEach {
                     it.velocity = it.position.sub(player.position).asVec().normalize().mul(60.0).withY { 17.0 }
                 }
-            }
-        }
-
-        eventNode.listenOnly<EntityPotionAddEvent> {
-            if (potion.effect == PotionEffect.GLOWING) {
-                entity.isGlowing = true
-            }
-        }
-        eventNode.listenOnly<EntityPotionRemoveEvent> {
-            if (potion.effect == PotionEffect.GLOWING) {
-                entity.isGlowing = false
             }
         }
 
@@ -270,11 +190,6 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                         mountMap[player.uuid]?.destroy()
                         mountMap.remove(player.uuid)
 
-                        if (armourStandSeatMap.containsKey(entity)) {
-                            armourStandSeatMap.remove(entity)
-                            entity.remove()
-                            player.velocity = Vec(0.0, 10.0, 0.0)
-                        }
                     }
                     return@listenOnly
                 }
@@ -309,18 +224,15 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
             if (block.name().contains("stair", true)) {
                 if (player.vehicle != null) return@listenOnly
-                if (armourStandSeatMap.values.contains(blockPosition)) return@listenOnly
+                if (armourStandSeatList.contains(blockPosition)) {
+                    player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
+                    return@listenOnly
+                }
                 if (block.getProperty("half") == "top") return@listenOnly
 
-                val armourStand = Entity(EntityType.ARMOR_STAND)
-                val armourStandMeta = armourStand.entityMeta as ArmorStandMeta
-                armourStandMeta.setNotifyAboutChanges(false)
-                armourStandMeta.isSmall = true
-                armourStandMeta.isHasNoBasePlate = true
-                armourStandMeta.isMarker = true
-                armourStandMeta.isInvisible = true
-                armourStandMeta.setNotifyAboutChanges(true)
-                armourStand.setNoGravity(true)
+                val armourStand = SeatEntity {
+                    armourStandSeatList.remove(blockPosition)
+                }
 
                 val spawnPos = blockPosition.add(0.5, 0.3, 0.5)
                 val yaw = when (block.getProperty("facing")) {
@@ -335,7 +247,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                         armourStand.addPassenger(player)
                     }
 
-                armourStandSeatMap[armourStand] = blockPosition
+                armourStandSeatList.add(blockPosition)
             }
         }
     }

@@ -3,16 +3,13 @@ package dev.emortal.lobby.commands
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.GameManager.game
 import dev.emortal.lobby.games.LobbyExtensionGame
+import dev.emortal.lobby.games.SeatEntity
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
 import net.minestom.server.coordinate.Pos
-import net.minestom.server.entity.Entity
-import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
-import net.minestom.server.entity.metadata.other.ArmorStandMeta
 import net.minestom.server.instance.block.Block
-import world.cepi.kstom.command.kommand.Kommand
 
 object SitCommand : Command("sit") {
 
@@ -57,20 +54,14 @@ object SitCommand : Command("sit") {
 
             val game = player.game as LobbyExtensionGame
 
-            if (game.armourStandSeatMap.values.contains(roundedPos)) {
+            if (game.armourStandSeatList.contains(roundedPos)) {
                 player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
                 return@setDefaultExecutor
             }
 
-            val armourStand = Entity(EntityType.ARMOR_STAND)
-            val armourStandMeta = armourStand.entityMeta as ArmorStandMeta
-            armourStandMeta.setNotifyAboutChanges(false)
-            armourStandMeta.isSmall = true
-            armourStandMeta.isHasNoBasePlate = true
-            armourStandMeta.isMarker = true
-            armourStandMeta.isInvisible = true
-            armourStandMeta.setNotifyAboutChanges(true)
-            armourStand.setNoGravity(true)
+            val armourStand = SeatEntity {
+                game.armourStandSeatList.remove(roundedPos)
+            }
 
             val spawnPos = roundedPos.add(0.5, -0.3, 0.5)
             armourStand.setInstance(player.instance!!, spawnPos.withYaw(player.position.yaw))
@@ -78,7 +69,7 @@ object SitCommand : Command("sit") {
                     armourStand.addPassenger(player)
                 }
 
-            game.armourStandSeatMap[armourStand] = roundedPos
+            game.armourStandSeatList.add(roundedPos)
         }
     }
 
