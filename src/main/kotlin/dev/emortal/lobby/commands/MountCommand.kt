@@ -2,7 +2,6 @@ package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
-import dev.emortal.lobby.commands.MountCommand.mountMap
 import dev.emortal.lobby.mount.DolphinMount
 import dev.emortal.lobby.mount.Mount
 import net.kyori.adventure.text.Component
@@ -10,7 +9,6 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
-import world.cepi.kstom.command.kommand.Kommand
 import java.util.*
 import java.util.concurrent.ConcurrentHashMap
 

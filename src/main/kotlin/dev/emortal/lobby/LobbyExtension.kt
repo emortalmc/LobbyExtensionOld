@@ -5,16 +5,18 @@ import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.game.WhenToRegisterEvents
 import dev.emortal.immortal.npc.PacketNPC
-import dev.emortal.immortal.util.RedisStorage.redisson
+import dev.emortal.immortal.util.JedisStorage.jedis
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
 import dev.emortal.lobby.util.showFirework
 import dev.emortal.nbstom.NBS
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextDecoration
 import net.minestom.server.color.Color
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.EntityType
@@ -26,7 +28,7 @@ import net.minestom.server.instance.IChunkLoader
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
 import org.tinylog.kotlin.Logger
-import world.cepi.kstom.Manager
+import redis.clients.jedis.JedisPubSub
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.command.register
 import world.cepi.kstom.command.unregister
@@ -97,34 +99,44 @@ class LobbyExtension : Extension() {
                 EntityType.fromNamespaceId(it.value.npcEntityType)
             ))
         }
+        
+        CoroutineScope(Dispatchers.IO).launch {
+            val registerGamePubSub = object : JedisPubSub() {
+                override fun onMessage(channel: String, message: String) {
+                    val args = message.split(" ")
+                    val gameName = args[0]
 
-        redisson?.getTopic("registergame")?.addListenerAsync(String::class.java) { channel, msg ->
-            val args = msg.split(" ")
-            val gameName = args[0]
-
-            playerCountCache[gameName] = 0
-            gameSelectorGUI.refreshPlayers(gameName, 0)
-            val games = GameManager.gameMap["lobby"]!!
-            games.forEach {
-                val lobbyGame = it as LobbyExtensionGame
-                lobbyGame.refreshHolo(gameName, 0)
+                    playerCountCache[gameName] = 0
+                    gameSelectorGUI.refreshPlayers(gameName, 0)
+                    val games = GameManager.gameMap["lobby"]!!.values
+                    games.forEach {
+                        val lobbyGame = it as LobbyExtensionGame
+                        lobbyGame.refreshHolo(gameName, 0)
+                    }
+                }
             }
-        }
+            jedis?.subscribe(registerGamePubSub, "registergame")
 
-        redisson?.getTopic("playercount")?.addListenerAsync(String::class.java) { channel, msg ->
-            val args = msg.split(" ")
-            val gameName = args[0]
-            val playerCount = args[1].toInt()
+            val playerCountPubSub = object : JedisPubSub() {
+                override fun onMessage(channel: String, message: String) {
+                    val args = message.split(" ")
+                    val gameName = args[0]
+                    val playerCount = args[1].toInt()
 
-            playerCountCache[gameName] = playerCount
-            gameSelectorGUI.refreshPlayers(gameName, playerCount)
-            val games = GameManager.gameMap["lobby"]!!
+                    playerCountCache[gameName] = playerCount
+                    gameSelectorGUI.refreshPlayers(gameName, playerCount)
+                    val games = GameManager.gameMap["lobby"]!!.values
 
-            games.values.forEach {
-                val lobbyGame = it as LobbyExtensionGame
-                lobbyGame.refreshHolo(gameName, playerCount)
+                    games.forEach {
+                        val lobbyGame = it as LobbyExtensionGame
+                        lobbyGame.refreshHolo(gameName, playerCount)
+                    }
+                }
             }
+            jedis?.subscribe(playerCountPubSub, "playercount")
         }
+        
+
 
         eventNode.listenOnly<PlayerSpawnEvent> {
             if (isFirstSpawn) {

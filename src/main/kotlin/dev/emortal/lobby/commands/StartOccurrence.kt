@@ -8,7 +8,6 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
 import net.minestom.server.entity.Player
-import world.cepi.kstom.command.kommand.Kommand
 import java.time.Duration
 
 object StartOccurrence : Command("startoccurrence") {

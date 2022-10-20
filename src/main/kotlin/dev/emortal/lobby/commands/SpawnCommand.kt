@@ -6,7 +6,6 @@ import net.minestom.server.command.builder.Command
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.sound.SoundEvent
-import world.cepi.kstom.command.kommand.Kommand
 
 object SpawnCommand : Command("spawn", "lobby", "hub", "l") {
     init {

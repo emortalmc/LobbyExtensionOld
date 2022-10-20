@@ -15,12 +15,12 @@ repositories {
 
 dependencies {
     compileOnly("com.github.Minestom:Minestom:17ef1c2f57")
-    compileOnly("com.github.EmortalMC:Immortal:1174fefda5")
+    compileOnly("com.github.EmortalMC:Immortal:f347767ee7")
 
     compileOnly("com.github.EmortalMC:NBStom:303d0ba5ba")
 
-    compileOnly("org.redisson:redisson:3.17.7")
-    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.0")
+    compileOnly("redis.clients:jedis:4.3.0")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }
 

@@ -8,7 +8,6 @@ import net.minestom.server.command.builder.Command
 import net.minestom.server.entity.Player
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
-import world.cepi.kstom.command.kommand.Kommand
 import java.awt.Color
 import java.util.concurrent.ThreadLocalRandom
 
