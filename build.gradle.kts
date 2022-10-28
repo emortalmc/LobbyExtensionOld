@@ -15,7 +15,7 @@ repositories {
 
 dependencies {
     compileOnly("com.github.Minestom:Minestom:e11d15af0d")
-    compileOnly("com.github.EmortalMC:Immortal:1d440cb2ed")
+    compileOnly("com.github.EmortalMC:Immortal:1.3.0")
 
     compileOnly("com.github.EmortalMC:NBStom:303d0ba5ba")
 
