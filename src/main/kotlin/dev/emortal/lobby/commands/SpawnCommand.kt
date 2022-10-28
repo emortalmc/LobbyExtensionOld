@@ -15,7 +15,7 @@ object SpawnCommand : Command("spawn", "lobby", "hub", "l") {
             if (player.vehicle?.entityType != EntityType.PLAYER) player.vehicle?.remove()
             else player.vehicle?.removePassenger(player)
 
-            player.teleport(player.game!!.spawnPosition).thenRun {
+            player.teleport(player.game!!.getSpawnPosition(player)).thenRun {
                 player.playSound(Sound.sound(SoundEvent.ENTITY_ENDERMAN_TELEPORT, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
             }
         }

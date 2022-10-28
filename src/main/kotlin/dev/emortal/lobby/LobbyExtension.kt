@@ -99,8 +99,9 @@ class LobbyExtension : Extension() {
                 EntityType.fromNamespaceId(it.value.npcEntityType)
             ))
         }
-        
-        CoroutineScope(Dispatchers.IO).launch {
+
+        val jedisScope = CoroutineScope(Dispatchers.IO)
+        jedisScope.launch {
             val registerGamePubSub = object : JedisPubSub() {
                 override fun onMessage(channel: String, message: String) {
                     val args = message.split(" ")
@@ -116,7 +117,9 @@ class LobbyExtension : Extension() {
                 }
             }
             jedis?.subscribe(registerGamePubSub, "registergame")
+        }
 
+        jedisScope.launch {
             val playerCountPubSub = object : JedisPubSub() {
                 override fun onMessage(channel: String, message: String) {
                     val args = message.split(" ")

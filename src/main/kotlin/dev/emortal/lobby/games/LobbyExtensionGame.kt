@@ -14,16 +14,19 @@ import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
-import net.kyori.adventure.text.format.TextColor
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
+import net.minestom.server.event.EventNode
 import net.minestom.server.event.entity.EntityTickEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.*
+import net.minestom.server.event.trait.InstanceEvent
+import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
+import net.minestom.server.instance.block.Block
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.firework.FireworkEffect
@@ -38,50 +41,44 @@ import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
 import java.awt.Color
+import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
-import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ThreadLocalRandom
 
 class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
     val armourStandSeatList = CopyOnWriteArraySet<Point>()
 
-    override var spawnPosition = Pos(0.5, 65.0, 0.5, 180f, 0f)
-
     var currentOccurrence: Occurrence? = null
     var occurrenceStopTask: Task? = null
 
     val holograms = ConcurrentHashMap<String, MultilineHologram>()
 
+    override fun getSpawnPosition(player: Player, spectator: Boolean): Pos = Pos(0.5, 65.0, 0.5, 180f, 0f)
+
     override fun gameStarted() {
-        instance.get()?.enableAutoChunkLoad(false)
+        instance.enableAutoChunkLoad(false)
 
         val radius = 5
         val diameter = radius * 2
         val chunks = (diameter + 1) * (diameter + 1)
-        val countDownLatch = CountDownLatch((diameter + 1) * (diameter + 1))
+        val futures = mutableListOf<CompletableFuture<Chunk>>()
         for (x in -radius..radius) {
             for (z in -radius..radius) {
-                instance.get()?.loadChunk(x, z)?.thenRun {
-                    countDownLatch.countDown()
-                }
+                instance.loadChunk(x, z).let { futures.add(it) }
+
             }
         }
 
         npcs.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
-            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance.get()!!)
+            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance)
 
             val playerCountCache = LobbyExtension.playerCountCache[it.gameName]
-            if (playerCountCache != -1) {
-                hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
-            } else {
-                hologram.setLine(it.hologramLines.size - 1, Component.text("Game unavailable", TextColor.color(217, 54, 54)))
-            }
 
-
+            hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
         }
 
 
@@ -134,8 +131,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
         }
     }
 
-    override fun registerEvents() {
-
+    override fun registerEvents(eventNode: EventNode<InstanceEvent>) {
         eventNode.cancel<ItemDropEvent>()
         eventNode.cancel<InventoryPreClickEvent>()
         eventNode.cancel<PlayerSwapItemEvent>()
@@ -258,11 +254,7 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
         val hologram = holograms[gameName] ?: return
 
-        if (players == -1) {
-            hologram.setLine(hologram.components.size - 1, Component.text("Game unavailable", TextColor.color(217, 54, 54)))
-        } else {
-            hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
-        }
+        hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
     }
 
     override fun instanceCreate(): Instance {

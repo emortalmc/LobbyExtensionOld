@@ -24,7 +24,7 @@ class ChatOccurrence : Occurrence() {
 
     override fun started(game: LobbyExtensionGame) {
 
-        val instance = game.instance.get() ?: return
+        val instance = game.instance
 
         val word = Block.values().random().namespace().path().replace("_", " ")
 
@@ -47,7 +47,7 @@ class ChatOccurrence : Occurrence() {
     }
 
     override fun stopped(game: LobbyExtensionGame) {
-        val instance = game.instance.get() ?: return
+        val instance = game.instance
         val correctPlayer = game.players.firstOrNull { it.hasTag(playerCorrectTag) }
 
         if (correctPlayer == null) {

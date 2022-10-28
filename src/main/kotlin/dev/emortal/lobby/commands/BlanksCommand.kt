@@ -26,7 +26,7 @@ object BlanksCommand : Command("blanks") {
             val input = context.get(inputArgument).joinToString(separator = " ")
 
             val lobbyGame = (player.game ?: return@addSyntax) as? LobbyExtensionGame ?: return@addSyntax
-            val chatOccTag = lobbyGame.instance.get()?.getTag(ChatOccurrence.chatOccTag) ?: return@addSyntax
+            val chatOccTag = lobbyGame.instance.getTag(ChatOccurrence.chatOccTag) ?: return@addSyntax
 
             if (input != chatOccTag) {
                 player.sendMessage(Component.text("That is not the word!", NamedTextColor.RED))
