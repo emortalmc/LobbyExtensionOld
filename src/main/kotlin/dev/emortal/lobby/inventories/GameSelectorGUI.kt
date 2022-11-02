@@ -71,7 +71,6 @@ class GameSelectorGUI : GUI() {
                 it.lore(loreList.map { loreLine -> loreLine.asMini().noItalic() })
                 it.hideFlag(*ItemHideFlag.values())
                 it.setTag(GameManager.gameNameTag, gameName)
-                it
             }
             .build()
     }

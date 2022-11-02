@@ -5,18 +5,21 @@ import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.metadata.other.ArmorStandMeta
 
-class SeatEntity(val onRemove: (SeatEntity) -> Unit) : Entity(EntityType.ARMOR_STAND) {
+class SeatEntity(physics: Boolean = false, entityType: EntityType = EntityType.ARMOR_STAND, val onRemove: (SeatEntity) -> Unit) : Entity(entityType) {
 
     init {
-        val meta = entityMeta as ArmorStandMeta
-        meta.setNotifyAboutChanges(false)
+        if (entityType == EntityType.ARMOR_STAND) {
+            val meta = entityMeta as ArmorStandMeta
+            meta.setNotifyAboutChanges(false)
+            meta.isMarker = true
+            meta.isInvisible = true
+            meta.isHasNoBasePlate = true
+            meta.isSmall = true
+            meta.setNotifyAboutChanges(true)
+        }
+
         setNoGravity(true)
-        hasPhysics = false
-        meta.isMarker = true
-        meta.isInvisible = true
-        meta.isHasNoBasePlate = true
-        meta.isSmall = true
-        meta.setNotifyAboutChanges(true)
+        hasPhysics = physics
     }
 
     override fun removePassenger(entity: Entity) {

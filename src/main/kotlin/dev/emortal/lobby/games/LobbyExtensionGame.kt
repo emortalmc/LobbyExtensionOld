@@ -1,15 +1,15 @@
 package dev.emortal.lobby.games
 
-import dev.emortal.immortal.config.GameOptions
-import dev.emortal.immortal.game.LobbyGame
+import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
 import dev.emortal.immortal.util.cancel
+import dev.emortal.immortal.util.showFireworkWithDuration
 import dev.emortal.lobby.LobbyExtension
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
-import dev.emortal.lobby.commands.MountCommand.mountMap
+import dev.emortal.lobby.mount.Mount
 import dev.emortal.lobby.occurrences.Occurrence
-import dev.emortal.lobby.util.showFireworkWithDuration
+import dev.emortal.nbstom.MusicPlayerInventory
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
@@ -19,14 +19,14 @@ import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.event.EventNode
-import net.minestom.server.event.entity.EntityTickEvent
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.event.trait.InstanceEvent
 import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
-import net.minestom.server.instance.block.Block
+import net.minestom.server.item.Enchantment
+import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.firework.FireworkEffect
@@ -41,14 +41,25 @@ import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
 import java.awt.Color
+import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.ThreadLocalRandom
 
-class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
+class LobbyExtensionGame : Game() {
+
+    override val allowsSpectators = false
+    override val countdownSeconds = 0
+    override val maxPlayers = 50
+    override val minPlayers = 2
+    override val showScoreboard = false
+    override val canJoinDuringGame = false
+    override val showsJoinLeaveMessages = true
+
 
     val armourStandSeatList = CopyOnWriteArraySet<Point>()
+    val mountMap = ConcurrentHashMap<UUID, Mount>()
 
     var currentOccurrence: Occurrence? = null
     var occurrenceStopTask: Task? = null
@@ -57,34 +68,25 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
     override fun getSpawnPosition(player: Player, spectator: Boolean): Pos = Pos(0.5, 65.0, 0.5, 180f, 0f)
 
-    override fun gameStarted() {
-        instance.enableAutoChunkLoad(false)
-
-        val radius = 5
-        val diameter = radius * 2
-        val chunks = (diameter + 1) * (diameter + 1)
-        val futures = mutableListOf<CompletableFuture<Chunk>>()
-        for (x in -radius..radius) {
-            for (z in -radius..radius) {
-                instance.loadChunk(x, z).let { futures.add(it) }
-
-            }
-        }
+    override fun gameCreated() {
 
         npcs.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
-            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance)
+            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance!!)
 
             val playerCountCache = LobbyExtension.playerCountCache[it.gameName]
 
             hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
         }
 
+    }
+
+    override fun gameStarted() {
 
     }
 
-    override fun gameDestroyed() {
+    override fun gameEnded() {
         holograms.clear()
         armourStandSeatList.clear()
     }
@@ -105,12 +107,24 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
 
         //player.isAllowFlying = player.hasLuckPermission("lobby.fly")
 
+        player.inventory.setItemStack(
+            8,
+            ItemStack.builder(Material.MUSIC_DISC_BLOCKS)
+                .displayName(Component.text("Music", NamedTextColor.GOLD).noItalic())
+                .meta { meta ->
+                    meta.enchantment(Enchantment.INFINITY, 1)
+                    meta.hideFlag(ItemHideFlag.HIDE_ENCHANTS)
+
+                }
+                .build()
+        )
+
         if (player.hasLuckPermission("lobby.fireworks")) {
             val fireworkItemstack = ItemStack.builder(Material.FIREWORK_ROCKET)
                 .displayName(Component.text("Launch a firework", NamedTextColor.LIGHT_PURPLE).noItalic())
                 .build()
 
-            player.inventory.setItemStack(8, fireworkItemstack)
+            player.inventory.setItemStack(7, fireworkItemstack)
         }
 
 //        if (player.hasLuckPermission("lobby.doot")) {
@@ -136,6 +150,9 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
         eventNode.cancel<InventoryPreClickEvent>()
         eventNode.cancel<PlayerSwapItemEvent>()
 
+        eventNode.cancel<PlayerBlockBreakEvent>()
+        eventNode.cancel<PlayerBlockPlaceEvent>()
+
         eventNode.listenOnly<PlayerEntityInteractEvent> {
             if (!player.itemInMainHand.isAir) return@listenOnly
             val interactedPlayer = target as? Player ?: return@listenOnly
@@ -153,17 +170,19 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
             }
         }
 
-        eventNode.listenOnly<EntityTickEvent> {
-            if (entity.entityType == EntityType.DOLPHIN) {
-                val pass = entity.passengers.firstOrNull()?.position
-                if (pass != null) this.entity.setView(pass.yaw, pass.pitch)
-            }
-        }
-
         eventNode.listenOnly<PlayerUseItemEvent> {
             if (itemStack.material() == Material.COMPASS) {
+                this.isCancelled = true
                 player.openInventory(LobbyExtension.gameSelectorGUI.inventory)
                 player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1f, 1.5f))
+                return@listenOnly
+            }
+
+            if (this.itemStack.material() == Material.MUSIC_DISC_BLOCKS) {
+                this.isCancelled = true
+                player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1f, 2f))
+                player.openInventory(MusicPlayerInventory.inventory)
+                return@listenOnly
             }
 
             if (itemStack.material() == Material.PHANTOM_MEMBRANE) {
@@ -182,9 +201,6 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
                     if (player.vehicle != null && player.vehicle !is Player) {
                         val entity = player.vehicle!!
                         entity.removePassenger(player)
-
-                        mountMap[player.uuid]?.destroy()
-                        mountMap.remove(player.uuid)
 
                     }
                     return@listenOnly
@@ -257,14 +273,32 @@ class LobbyExtensionGame(gameOptions: GameOptions) : LobbyGame(gameOptions) {
         hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
     }
 
-    override fun instanceCreate(): Instance {
+    override fun instanceCreate(): CompletableFuture<Instance> {
+        val instanceFuture = CompletableFuture<Instance>()
+
         val newInstance = Manager.instance.createInstanceContainer()
         newInstance.chunkLoader = LobbyExtension.sharedLoader
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
-        return newInstance
+        newInstance.enableAutoChunkLoad(false)
+
+        val radius = 5
+        val chunkFutures = mutableListOf<CompletableFuture<Chunk>>()
+        var i = 0
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                newInstance.loadChunk(x, z).let { chunkFutures.add(it) }
+                i++
+            }
+        }
+
+        CompletableFuture.allOf(*chunkFutures.toTypedArray()).thenRunAsync {
+            instanceFuture.complete(newInstance)
+        }
+
+        return instanceFuture
     }
 
 }

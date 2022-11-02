@@ -27,9 +27,9 @@ object StartOccurrence : Command("startoccurrence") {
             val occurrence = ChatOccurrence()
             occurrence.start(lobbyGame)
 
-            lobbyGame.occurrenceStopTask = lobbyGame.instance.scheduler().buildTask {
+            lobbyGame.occurrenceStopTask = lobbyGame.instance!!.scheduler().buildTask {
                 lobbyGame.currentOccurrence?.stop(lobbyGame)
-            }?.delay(Duration.ofSeconds(40))?.schedule()
+            }.delay(Duration.ofSeconds(40)).schedule()
         }
     }
 

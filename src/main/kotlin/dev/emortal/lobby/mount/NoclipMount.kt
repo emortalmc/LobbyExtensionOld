@@ -6,25 +6,21 @@ import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.instance.Instance
-import net.minestom.server.timer.TaskSchedule
-import org.json.XMLTokener.entity
 
-object DolphinMount : Mount(Component.text("Dolphin", NamedTextColor.AQUA)) {
+object NoclipMount : Mount(Component.text("Noclip", NamedTextColor.RED)) {
 
     override fun spawn(instance: Instance, player: Player) {
-        val entity = SeatEntity(physics = true, entityType = EntityType.DOLPHIN) {
+        val entity = SeatEntity(physics = false, entityType = EntityType.MINECART) {
             destroy()
         }
-
-        entity.scheduler().buildTask {
-            tick(player)
-        }.repeat(TaskSchedule.nextTick()).schedule()
-
         entity.setInstance(instance, player.position).thenRun {
             entity.addPassenger(player)
         }
-
         entities.add(entity)
+    }
+
+    override fun tick(player: Player) {
+
     }
 
 }

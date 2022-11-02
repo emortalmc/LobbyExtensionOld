@@ -39,7 +39,7 @@ class ChatOccurrence : Occurrence() {
             .build()
             .armify()
 
-        instance.setTag(chatOccTag, word)
+        instance!!.setTag(chatOccTag, word)
         instance.setTag(chatOccStartTag, System.currentTimeMillis())
 
         game.sendMessage(startMessage)
@@ -58,7 +58,7 @@ class ChatOccurrence : Occurrence() {
                     .append(Component.text(centerText("Fill in the blanks"), NamedTextColor.GRAY))
                     .append(Component.text("\n\nNo one got the word", NamedTextColor.RED))
                     .append(Component.text("\n\nThe word was: ", NamedTextColor.GRAY))
-                    .append(Component.text(instance.getTag(chatOccTag), NamedTextColor.WHITE))
+                    .append(Component.text(instance!!.getTag(chatOccTag), NamedTextColor.WHITE))
                     .build()
                     .armify()
             )
@@ -67,7 +67,7 @@ class ChatOccurrence : Occurrence() {
         } else {
             correctPlayer.removeTag(playerCorrectTag)
 
-            val occurrenceSecs = ((System.currentTimeMillis() - instance.getTag(chatOccStartTag)!!) / 1000).parsed()
+            val occurrenceSecs = ((System.currentTimeMillis() - instance!!.getTag(chatOccStartTag)!!) / 1000).parsed()
             game.sendMessage(
                 Component.text()
                     .append(Component.text(centerText("Random Occurrence", bold = true), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD))

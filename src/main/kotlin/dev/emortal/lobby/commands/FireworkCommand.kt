@@ -1,7 +1,7 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.lobby.util.showFireworkWithDuration
+import dev.emortal.immortal.util.showFireworkWithDuration
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command

@@ -10,12 +10,14 @@ plugins {
 
 repositories {
     mavenCentral()
+    mavenLocal()
     maven("https://jitpack.io")
 }
 
 dependencies {
-    compileOnly("com.github.Minestom:Minestom:e11d15af0d")
-    compileOnly("com.github.EmortalMC:Immortal:1d440cb2ed")
+    compileOnly("com.github.Minestom:Minestom:c3df2af306")
+//    compileOnly("com.github.EmortalMC:Immortal:34b3e485f6")
+    compileOnly("dev.emortal.immortal:Immortal:3.0.1")
 
     compileOnly("com.github.EmortalMC:NBStom:303d0ba5ba")
 

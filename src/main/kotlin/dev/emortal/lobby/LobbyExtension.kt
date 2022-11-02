@@ -1,16 +1,14 @@
 package dev.emortal.lobby
 
 import dev.emortal.immortal.config.ConfigHelper
-import dev.emortal.immortal.config.GameOptions
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.immortal.game.WhenToRegisterEvents
 import dev.emortal.immortal.npc.PacketNPC
 import dev.emortal.immortal.util.JedisStorage.jedis
+import dev.emortal.immortal.util.showFirework
 import dev.emortal.lobby.commands.*
 import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
-import dev.emortal.lobby.util.showFirework
 import dev.emortal.nbstom.NBS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -66,17 +64,7 @@ class LobbyExtension : Extension() {
         GameManager.registerGame<LobbyExtensionGame>(
             "lobby",
             Component.text("Lobby", NamedTextColor.GREEN),
-            showsInSlashPlay = false,
-            canSpectate = false,
-            WhenToRegisterEvents.IMMEDIATELY,
-            GameOptions(
-                maxPlayers = 50,
-                minPlayers = 0,
-                countdownSeconds = 0,
-                canJoinDuringGame = true,
-                showScoreboard = false,
-                allowsSpectators = false
-            )
+            showsInSlashPlay = false
         )
 
         gameListingConfig.gameListings.entries.forEachIndexed { i, it ->
@@ -109,7 +97,7 @@ class LobbyExtension : Extension() {
 
                     playerCountCache[gameName] = 0
                     gameSelectorGUI.refreshPlayers(gameName, 0)
-                    val games = GameManager.gameMap["lobby"]!!.values
+                    val games = GameManager.getGames("lobby")!!
                     games.forEach {
                         val lobbyGame = it as LobbyExtensionGame
                         lobbyGame.refreshHolo(gameName, 0)
@@ -128,7 +116,7 @@ class LobbyExtension : Extension() {
 
                     playerCountCache[gameName] = playerCount
                     gameSelectorGUI.refreshPlayers(gameName, playerCount)
-                    val games = GameManager.gameMap["lobby"]!!.values
+                    val games = GameManager.getGames("lobby")!!
 
                     games.forEach {
                         val lobbyGame = it as LobbyExtensionGame

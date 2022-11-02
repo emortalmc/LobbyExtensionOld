@@ -18,13 +18,13 @@ object SitCommand : Command("sit") {
             if (sender !is Player) {
                 return@setCondition false
             }
-            if ((sender as Player).instance?.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
+            if (sender.instance?.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
                 return@setCondition true
             }
             return@setCondition false
         }
 
-        setDefaultExecutor { sender, context ->
+        setDefaultExecutor { sender, _ ->
             val player = sender as? Player ?: return@setDefaultExecutor
 
             if (!player.instance!!.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
