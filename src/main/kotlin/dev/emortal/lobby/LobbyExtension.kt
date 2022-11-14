@@ -23,10 +23,15 @@ import net.minestom.server.event.player.PlayerSpawnEvent
 import net.minestom.server.extensions.Extension
 import net.minestom.server.instance.AnvilLoader
 import net.minestom.server.instance.IChunkLoader
+import net.minestom.server.instance.Instance
+import net.minestom.server.instance.InstanceContainer
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
+import net.minestom.server.tag.Tag
+import net.minestom.server.timer.TaskSchedule
 import org.tinylog.kotlin.Logger
 import redis.clients.jedis.JedisPubSub
+import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.asMini
 import world.cepi.kstom.command.register
 import world.cepi.kstom.command.unregister
@@ -51,7 +56,7 @@ class LobbyExtension : Extension() {
 
         val playerCountCache = ConcurrentHashMap<String, Int>()
 
-        lateinit var sharedLoader: IChunkLoader
+        lateinit var lobbyInstance: InstanceContainer
     }
 
     override fun initialize() {
@@ -59,7 +64,20 @@ class LobbyExtension : Extension() {
         gameSelectorGUI = GameSelectorGUI()
 
         Logger.info("Preloading lobby world")
-        sharedLoader = AnvilLoader("./lobby")
+        lobbyInstance = Manager.instance.createInstanceContainer()
+        lobbyInstance.chunkLoader = AnvilLoader("./lobby")
+        lobbyInstance.timeRate = 0
+        lobbyInstance.timeUpdate = null
+        lobbyInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
+
+        lobbyInstance.enableAutoChunkLoad(false)
+
+        val radius = 8
+        for (x in -radius..radius) {
+            for (z in -radius..radius) {
+                lobbyInstance.loadChunk(x, z)
+            }
+        }
 
         GameManager.registerGame<LobbyExtensionGame>(
             "lobby",
@@ -67,12 +85,13 @@ class LobbyExtension : Extension() {
             showsInSlashPlay = false
         )
 
-        gameListingConfig.gameListings.entries.forEachIndexed { i, it ->
+        val visibleEntries = gameListingConfig.gameListings.entries.filter { it.value.npcVisible }
+        visibleEntries.forEachIndexed { i, it ->
             val hologramLines = it.value.npcTitles.map(String::asMini).toMutableList()
 
             hologramLines.add(Component.empty())
 
-            val angle = i * (PI / (gameListingConfig.gameListings.size - 1))
+            val angle = i * (PI / (visibleEntries.size - 1))
             val circleSize = 3.7
             val circleCenter = Pos(0.5, 69.0, -29.0)
             val lookingPos = Pos(0.5, 69.0, -27.5)
@@ -159,7 +178,7 @@ class LobbyExtension : Extension() {
                             )
                         )
                     )
-                }.delay(Duration.ofMillis(500)).schedule()
+                }.delay(TaskSchedule.millis(500)).schedule()
             }
         }
 

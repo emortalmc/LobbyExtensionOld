@@ -1,6 +1,7 @@
 package dev.emortal.lobby.mount
 
 import net.kyori.adventure.text.Component
+import net.minestom.server.MinecraftServer
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.Player
 import net.minestom.server.instance.Instance
@@ -36,7 +37,7 @@ sealed class Mount(val title: Component) {
     open fun move(player: Player, forward: Float, sideways: Float) {
         entities.forEach { entity ->
             if (forward == 0f && sideways == 0f) {
-                entity.velocity = entity.velocity.mul(0.9)
+                entity.velocity = entity.velocity.mul(MinecraftServer.TICK_PER_SECOND * 0.05)
                 return
             }
 
@@ -45,7 +46,7 @@ sealed class Mount(val title: Component) {
 
             entity.velocity = playerDir.mul(forward.toDouble())
                 .add(playerDir.withY(0.0).rotateAroundY(90 * PI /180).mul(sideways.toDouble()))
-                .mul(20.0)
+                .mul(MinecraftServer.TICK_PER_SECOND * 0.8)
         }
 
     }

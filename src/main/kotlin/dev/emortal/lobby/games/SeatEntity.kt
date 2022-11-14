@@ -1,5 +1,6 @@
 package dev.emortal.lobby.games
 
+import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
@@ -25,7 +26,7 @@ class SeatEntity(physics: Boolean = false, entityType: EntityType = EntityType.A
     override fun removePassenger(entity: Entity) {
         super.removePassenger(entity)
 
-        entity.velocity = Vec(0.0, 10.0, 0.0)
+        entity.velocity = Vec(0.0, MinecraftServer.TICK_PER_SECOND * 0.5, 0.0)
 
         if (passengers.isEmpty()) {
             onRemove(this)

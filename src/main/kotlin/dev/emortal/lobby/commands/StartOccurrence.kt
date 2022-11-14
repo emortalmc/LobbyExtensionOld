@@ -8,6 +8,7 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
 import net.minestom.server.entity.Player
+import net.minestom.server.timer.TaskSchedule
 import java.time.Duration
 
 object StartOccurrence : Command("startoccurrence") {
@@ -29,7 +30,7 @@ object StartOccurrence : Command("startoccurrence") {
 
             lobbyGame.occurrenceStopTask = lobbyGame.instance!!.scheduler().buildTask {
                 lobbyGame.currentOccurrence?.stop(lobbyGame)
-            }.delay(Duration.ofSeconds(40)).schedule()
+            }.delay(TaskSchedule.seconds(40)).schedule()
         }
     }
 

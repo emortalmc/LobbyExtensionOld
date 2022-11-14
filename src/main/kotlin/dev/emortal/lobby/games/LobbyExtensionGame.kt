@@ -3,6 +3,8 @@ package dev.emortal.lobby.games
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
+import dev.emortal.immortal.util.MinestomRunnable
+import dev.emortal.immortal.util.RunnableGroup
 import dev.emortal.immortal.util.cancel
 import dev.emortal.immortal.util.showFireworkWithDuration
 import dev.emortal.lobby.LobbyExtension
@@ -14,8 +16,11 @@ import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.format.TextColor
+import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
+import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.event.EventNode
@@ -25,6 +30,7 @@ import net.minestom.server.event.player.*
 import net.minestom.server.event.trait.InstanceEvent
 import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
+import net.minestom.server.instance.block.Block
 import net.minestom.server.item.Enchantment
 import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
@@ -40,21 +46,31 @@ import world.cepi.kstom.Manager
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
+import world.cepi.particle.Particle
+import world.cepi.particle.ParticleType
+import world.cepi.particle.data.OffsetAndSpeed
+import world.cepi.particle.extra.Dust
+import world.cepi.particle.extra.DustTransition
+import world.cepi.particle.showParticle
 import java.awt.Color
+import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.ThreadLocalRandom
+import kotlin.math.PI
+import kotlin.math.cos
+import kotlin.math.sin
 
 class LobbyExtensionGame : Game() {
 
     override val allowsSpectators = false
     override val countdownSeconds = 0
     override val maxPlayers = 50
-    override val minPlayers = 2
+    override val minPlayers = 0
     override val showScoreboard = false
-    override val canJoinDuringGame = false
+    override val canJoinDuringGame = true
     override val showsJoinLeaveMessages = true
 
 
@@ -69,15 +85,19 @@ class LobbyExtensionGame : Game() {
     override fun getSpawnPosition(player: Player, spectator: Boolean): Pos = Pos(0.5, 65.0, 0.5, 180f, 0f)
 
     override fun gameCreated() {
-
+        start()
         npcs.forEach {
             val hologram = MultilineHologram(it.hologramLines.toMutableList())
             holograms[it.gameName] = hologram
-            hologram.setInstance(it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0), instance!!)
+            val spawnPosition = it.position.add(0.0, (it.entityType.height() + 0.2) / 2.0, 0.0)
+            instance!!.loadChunk(spawnPosition).thenRun {
+                hologram.setInstance(spawnPosition, instance!!)
 
-            val playerCountCache = LobbyExtension.playerCountCache[it.gameName]
+                val playerCountCache = LobbyExtension.playerCountCache[it.gameName]
 
-            hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
+                hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
+            }
+
         }
 
     }
@@ -91,7 +111,59 @@ class LobbyExtensionGame : Game() {
         armourStandSeatList.clear()
     }
 
+    val playerGroupMap = ConcurrentHashMap<UUID, RunnableGroup>()
+
     override fun playerJoin(player: Player) {
+
+        if (player.username == "emortaldev") {
+            val group = RunnableGroup()
+            playerGroupMap[player.uuid] = group
+
+            object : MinestomRunnable(repeat = Duration.ofMillis(MinecraftServer.TICK_MS.toLong()), group = group) {
+                var heightI = 0.0
+                var spinI = 0.0
+                var yRot = 0.0
+                var lastPos = player.position
+
+                override fun run() {
+                    if (player.position.distanceSquared(lastPos ?: Pos.ZERO) > 0.2 * 0.2) {
+                        lastPos = player.position
+                        return
+                    }
+                    lastPos = player.position
+
+                    yRot += 0.05
+
+                    if (yRot > PI*2) yRot = 0.0
+
+                    repeat(3) {
+                        heightI += 0.15
+                        spinI += 0.15
+                        if (spinI > PI*2) spinI = 0.0
+                        if (heightI > PI*2) heightI = 0.0
+
+                        instance?.showParticle(
+                            Particle.particle(
+                                type = ParticleType.DUST_COLOR_TRANSITION,
+                                data = OffsetAndSpeed(),
+                                extraData = DustTransition(1f, 0.5f, 0f, 1f, 0f, 1f, 1.15f),
+                                count = 1
+                            ),
+                            player.position.add(
+                                Vec(
+                                    cos(spinI) * 1.2,
+                                    (sin(heightI) * 0.5),
+                                    sin(spinI) * 1.2
+                                ).rotateAroundY(yRot).add(0.0, 1.0, 0.0)
+                            ).asVec()
+                        )
+
+                    }
+
+                }
+            }
+        }
+
         npcs.forEach {
             it.addViewer(player)
         }
@@ -140,6 +212,8 @@ class LobbyExtensionGame : Game() {
     }
 
     override fun playerLeave(player: Player) {
+        playerGroupMap[player.uuid]?.cancelAll()
+        playerGroupMap.remove(player.uuid)
         npcs.forEach {
             it.removeViewer(player)
         }
@@ -166,7 +240,7 @@ class LobbyExtensionGame : Game() {
         eventNode.listenOnly<PlayerStopSneakingEvent> {
             player.passengers.forEach {
                 player.removePassenger(it)
-                it.velocity = this.player.position.direction().mul(30.0)
+                it.velocity = this.player.position.direction().mul(MinecraftServer.TICK_PER_SECOND.toDouble()).mul(1.5)
             }
         }
 
@@ -241,6 +315,7 @@ class LobbyExtensionGame : Game() {
                     return@listenOnly
                 }
                 if (block.getProperty("half") == "top") return@listenOnly
+                if (!instance.getBlock(blockPosition.add(0.0, 1.0, 0.0)).compare(Block.AIR)) return@listenOnly
 
                 val armourStand = SeatEntity {
                     armourStandSeatList.remove(blockPosition)
@@ -273,29 +348,28 @@ class LobbyExtensionGame : Game() {
         hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
     }
 
+    // heh
+    override fun victory(winningPlayers: Collection<Player>) {
+    }
+
     override fun instanceCreate(): CompletableFuture<Instance> {
         val instanceFuture = CompletableFuture<Instance>()
 
-        val newInstance = Manager.instance.createInstanceContainer()
-        newInstance.chunkLoader = LobbyExtension.sharedLoader
+        val newInstance = Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
         newInstance.timeRate = 0
         newInstance.timeUpdate = null
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
         newInstance.enableAutoChunkLoad(false)
 
-        val radius = 5
-        val chunkFutures = mutableListOf<CompletableFuture<Chunk>>()
-        var i = 0
+        // 1 chunk required for player to spawn
+        newInstance.loadChunk(0, 0).thenRun { instanceFuture.complete(newInstance) }
+
+        val radius = 8
         for (x in -radius..radius) {
             for (z in -radius..radius) {
-                newInstance.loadChunk(x, z).let { chunkFutures.add(it) }
-                i++
+                newInstance.loadChunk(x, z).thenAccept { it.sendChunk() }
             }
-        }
-
-        CompletableFuture.allOf(*chunkFutures.toTypedArray()).thenRunAsync {
-            instanceFuture.complete(newInstance)
         }
 
         return instanceFuture
