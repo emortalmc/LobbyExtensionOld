@@ -14,16 +14,6 @@ import net.minestom.server.instance.block.Block
 object SitCommand : Command("sit") {
 
     init {
-        setCondition { sender, _ ->
-            if (sender !is Player) {
-                return@setCondition false
-            }
-            if (sender.instance?.getTag(GameManager.gameNameTag).contentEquals("lobby", true)) {
-                return@setCondition true
-            }
-            return@setCondition false
-        }
-
         setDefaultExecutor { sender, _ ->
             val player = sender as? Player ?: return@setDefaultExecutor
 

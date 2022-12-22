@@ -8,6 +8,7 @@ import dev.emortal.immortal.util.RunnableGroup
 import dev.emortal.immortal.util.cancel
 import dev.emortal.immortal.util.showFireworkWithDuration
 import dev.emortal.lobby.LobbyExtension
+import dev.emortal.lobby.LobbyExtension.Companion.lobbyBiome
 import dev.emortal.lobby.LobbyExtension.Companion.npcs
 import dev.emortal.lobby.mount.Mount
 import dev.emortal.lobby.occurrences.Occurrence
@@ -17,19 +18,27 @@ import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.format.TextColor
+import net.kyori.adventure.text.format.TextDecoration
+import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.EntityType
+import net.minestom.server.entity.GameMode
+import net.minestom.server.entity.ItemEntity
 import net.minestom.server.entity.Player
 import net.minestom.server.event.EventNode
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
+import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.event.trait.InstanceEvent
 import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
+import net.minestom.server.instance.batch.AbsoluteBlockBatch
+import net.minestom.server.instance.batch.Batch
+import net.minestom.server.instance.batch.BatchOption
 import net.minestom.server.instance.block.Block
 import net.minestom.server.item.Enchantment
 import net.minestom.server.item.ItemHideFlag
@@ -39,13 +48,25 @@ import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
+import net.minestom.server.network.packet.server.play.EntitySoundEffectPacket
+import net.minestom.server.resourcepack.ResourcePack
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.Task
+import net.minestom.server.timer.TaskSchedule
+import net.minestom.server.utils.Direction
+import net.minestom.server.utils.NamespaceID
+import net.minestom.server.utils.time.TimeUnit
+import net.minestom.server.world.biomes.Biome
+import net.minestom.server.world.biomes.BiomeEffects
 import world.cepi.kstom.Manager
+import world.cepi.kstom.Manager.biome
+import world.cepi.kstom.Manager.block
+import world.cepi.kstom.adventure.color
 import world.cepi.kstom.adventure.noItalic
 import world.cepi.kstom.event.listenOnly
 import world.cepi.kstom.util.asPos
+import world.cepi.kstom.util.playSound
 import world.cepi.particle.Particle
 import world.cepi.particle.ParticleType
 import world.cepi.particle.data.OffsetAndSpeed
@@ -65,6 +86,30 @@ import kotlin.math.sin
 
 class LobbyExtensionGame : Game() {
 
+    private val christmasBookNames = setOf(
+        "The Polar Express",
+        "The Velveteen Rabbit",
+        "A Christmas Carol",
+        "How the Grinch Stole Christmas!",
+        "Letters from Father Christmas",
+        "A Christmas Memory",
+        "The Nutcracker",
+        "Rudolph the Red-nosed Reindeer",
+        "The Snowman",
+        "Miracle on 34th Street",
+        "Father Christmas",
+        "The Snow Queen",
+        "The Lion, the Witch and the Wardrobe",
+        "The Night Before Christmas",
+        "The Twelve Days of Christmas",
+        "Dream Snow",
+        "The Jolly Christmas Postman",
+        "The Biggest Snowman Ever",
+        "The Christmas Tale of Peter Rabbit",
+        "Stick Man"
+    )
+
+
     override val allowsSpectators = false
     override val countdownSeconds = 0
     override val maxPlayers = 50
@@ -73,6 +118,13 @@ class LobbyExtensionGame : Game() {
     override val canJoinDuringGame = true
     override val showsJoinLeaveMessages = true
 
+
+    private val gsonSerializer = GsonComponentSerializer.gson()
+
+    private val lightsOutGrid = Array(5) { BooleanArray(5) { false } }
+    private val lightsOutX = 5
+    private val lightsOutY = 64
+    private val lightsOutZ = -12
 
     val armourStandSeatList = CopyOnWriteArraySet<Point>()
     val mountMap = ConcurrentHashMap<UUID, Mount>()
@@ -98,6 +150,19 @@ class LobbyExtensionGame : Game() {
                 hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
             }
 
+        }
+
+        val signPos = Pos(9.0, 66.0, -15.0)
+        instance!!.loadChunk(signPos).thenAccept {
+            it.setBlock(signPos.add(-1.0, 0.0, 0.0), Block.AIR)
+
+            val clickedNum = LobbyExtension.buttonPresses.get()
+            val newBlock = instance!!.getBlock(signPos)
+                .withTag(Tag.String("Text1"), "{\"extra\":[{\"bold\":false,\"color\":\"black\",\"text\":\"This sign has\"}],\"text\":\"\"}")
+                .withTag(Tag.String("Text4"), "{\"extra\":[{\"bold\":true,\"color\":\"light_purple\",\"text\":\"$clickedNum \"},{\"color\":\"light_purple\",\"text\":\"times\"}],\"text\":\"\"}")
+            it.setBlock(signPos, newBlock)
+
+            instance!!.setBlock(7, 65, -6, Block.BIRCH_BUTTON.withProperty("face", "floor").withProperty("facing", "north"))
         }
 
     }
@@ -126,7 +191,7 @@ class LobbyExtensionGame : Game() {
                 var lastPos = player.position
 
                 override fun run() {
-                    if (player.position.distanceSquared(lastPos ?: Pos.ZERO) > 0.2 * 0.2) {
+                    if (player.position.distanceSquared(lastPos) > 0.2 * 0.2) {
                         lastPos = player.position
                         return
                     }
@@ -172,6 +237,8 @@ class LobbyExtensionGame : Game() {
             .displayName(Component.text("Game Selector", NamedTextColor.GOLD).noItalic())
             .build()
 
+
+
         //player.inventory.helmet = ItemStack.of(Material.GOLDEN_HELMET)
         //player.sendMessage("o7")
 
@@ -199,6 +266,15 @@ class LobbyExtensionGame : Game() {
             player.inventory.setItemStack(7, fireworkItemstack)
         }
 
+//        if (player.hasLuckPermission("lobby.bobux")) {
+//            val bobuxItemStack = ItemStack.builder(Material.SUNFLOWER)
+//                .displayName(Component.text("Great British Pound", NamedTextColor.GOLD).noItalic())
+//                .amount(64)
+//                .build()
+//
+//            player.inventory.setItemStack(0, bobuxItemStack)
+//        }
+
 //        if (player.hasLuckPermission("lobby.doot")) {
 //            val trumpetItemstack = ItemStack.builder(Material.PHANTOM_MEMBRANE)
 //                .displayName(Component.text("Trumpet", NamedTextColor.YELLOW).noItalic())
@@ -220,7 +296,6 @@ class LobbyExtensionGame : Game() {
     }
 
     override fun registerEvents(eventNode: EventNode<InstanceEvent>) {
-        eventNode.cancel<ItemDropEvent>()
         eventNode.cancel<InventoryPreClickEvent>()
         eventNode.cancel<PlayerSwapItemEvent>()
 
@@ -268,6 +343,36 @@ class LobbyExtensionGame : Game() {
             }
         }
 
+        eventNode.listenOnly<ItemDropEvent> {
+            if (itemStack.material() != Material.SUNFLOWER) {
+                isCancelled = true
+                return@listenOnly
+            }
+            val itemEntity = ItemEntity(itemStack)
+            itemEntity.setPickupDelay(Duration.ofMillis(2000))
+            val velocity = player.position.direction().mul(6.0)
+            itemEntity.velocity = velocity
+            itemEntity.boundingBox = itemEntity.boundingBox.expand(0.5, 0.0, 0.5)
+            itemEntity.scheduleRemove(Duration.ofMinutes(3))
+            itemEntity.isCustomNameVisible = true
+            itemEntity.customName = itemStack.displayName
+            itemEntity.setInstance(player.instance!!, player.position.add(0.0, 1.5, 0.0))
+        }
+
+//        eventNode.listenOnly<PickupItemEvent> {
+//            this.entity
+//            val player = entity as? Player ?: return@listenOnly
+//
+//            val couldAdd = player.inventory.addItemStack(itemStack)
+//            isCancelled = !couldAdd
+//
+//            if (couldAdd && itemStack.material() == Material.SUNFLOWER) {
+//                val bobuxAmount = player.inventory.itemStacks.filter { it.material() == Material.SUNFLOWER }.sumOf { it.amount() }
+//                player.sendActionBar(Component.text("You now have £$bobuxAmount", NamedTextColor.GREEN))
+//                player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_XYLOPHONE, Sound.Source.MASTER, 1f, 2f), Sound.Emitter.self())
+//            }
+//        }
+
         eventNode.listenOnly<PlayerPacketEvent> {
             if (packet is ClientSteerVehiclePacket) {
                 val steerPacket = packet as ClientSteerVehiclePacket
@@ -307,6 +412,44 @@ class LobbyExtensionGame : Game() {
         }
 
         eventNode.listenOnly<PlayerBlockInteractEvent> {
+            if (hand != Player.Hand.MAIN) return@listenOnly
+
+            if (block.compare(Block.BIRCH_BUTTON)) {
+                isCancelled = true
+
+                val batch = AbsoluteBlockBatch(BatchOption().setSendUpdate(false)) // update is sent later to fix button anyway
+
+                repeat(20) {
+                    val rand = ThreadLocalRandom.current()
+                    lightsOutClick(batch, rand.nextInt(0, 5), rand.nextInt(0, 5))
+                }
+
+                batch.apply(instance) {
+                    instance.getChunkAt(blockPosition)?.sendChunk()
+                }
+            }
+
+            if (block.compare(Block.BIRCH_WALL_SIGN)) {
+                if (blockPosition.sameBlock(Pos(9.0, 66.0, -15.0))) {
+                    player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_HAT, Sound.Source.BLOCK, 0.75f, 2f), blockPosition.add(0.5))
+
+                    val clickedNum = LobbyExtension.buttonPresses.incrementAndGet()
+                    val component = Component.text(clickedNum, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
+                        .append(Component.text(" times", TextColor.color(212, 11, 212)))
+                    val newBlock = instance.getBlock(blockPosition)
+                        .withTag(Tag.String("Text4"), gsonSerializer.serialize(component))
+
+                    instance.setBlock(blockPosition, newBlock)
+                }
+            }
+
+            if (block.compare(Block.REDSTONE_LAMP)) {
+                val batch = AbsoluteBlockBatch()
+                lightsOutClick(batch, blockPosition.blockX() - lightsOutX, blockPosition.blockZ() - lightsOutZ)
+                batch.apply(instance) {}
+
+                player.playSound(Sound.sound(SoundEvent.BLOCK_WOODEN_BUTTON_CLICK_ON, Sound.Source.MASTER, 1f, 1.5f), Sound.Emitter.self())
+            }
 
             if (block.name().contains("stair", true)) {
                 if (player.vehicle != null) return@listenOnly
@@ -339,10 +482,24 @@ class LobbyExtensionGame : Game() {
         }
     }
 
-    fun refreshHolo(gameName: String, players: Int) {
-        val gameListing = LobbyExtension.gameListingConfig.gameListings[gameName] ?: return
-        if (!gameListing.itemVisible) return
+    fun lightsOutClick(batch: AbsoluteBlockBatch, x: Int, y: Int) {
+        Direction.HORIZONTAL.forEach {
+            val newX = x + it.normalX()
+            val newY = y + it.normalZ()
+            if (newX !in 0 until 5) return@forEach
+            if (newY !in 0 until 5) return@forEach
 
+            val newValue = !lightsOutGrid[newX][newY]
+            lightsOutGrid[newX][newY] = newValue
+
+            batch.setBlock(lightsOutX + newX, 64, lightsOutZ + newY, Block.REDSTONE_LAMP.withProperty("lit", newValue.toString()))
+        }
+
+        lightsOutGrid[x][y] = !lightsOutGrid[x][y]
+        batch.setBlock(lightsOutX + x, lightsOutY, lightsOutZ + y, Block.REDSTONE_LAMP.withProperty("lit", lightsOutGrid[x][y].toString()))
+    }
+
+    fun refreshHolo(gameName: String, players: Int) {
         val hologram = holograms[gameName] ?: return
 
         hologram.setLine(hologram.components.size - 1, Component.text("$players online", NamedTextColor.GRAY))
@@ -357,6 +514,7 @@ class LobbyExtensionGame : Game() {
 
         val newInstance = Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
         newInstance.timeRate = 0
+        newInstance.time = 18000
         newInstance.timeUpdate = null
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
@@ -368,7 +526,20 @@ class LobbyExtensionGame : Game() {
         val radius = 8
         for (x in -radius..radius) {
             for (z in -radius..radius) {
-                newInstance.loadChunk(x, z).thenAccept { it.sendChunk() }
+                newInstance.loadChunk(x, z).thenAccept {
+                    for (x in 0 until Chunk.CHUNK_SIZE_X) {
+                        for (y in 60..80) {
+                            for (z in 0 until Chunk.CHUNK_SIZE_Z) {
+                                it.setBiome(x, y, z, lobbyBiome)
+                                if (it.getBlock(x, y, z).compare(Block.BROWN_GLAZED_TERRACOTTA)) {
+                                    it.setBlock(x, y, z, Block.AIR)
+                                    println("Changed block")
+                                }
+                            }
+                        }
+                    }
+                    it.sendChunk()
+                }
             }
         }
 

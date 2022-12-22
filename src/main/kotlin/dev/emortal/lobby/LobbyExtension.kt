@@ -13,8 +13,10 @@ import dev.emortal.nbstom.NBS
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.minestom.server.MinecraftServer
 import net.minestom.server.color.Color
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.EntityType
@@ -29,6 +31,9 @@ import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.TaskSchedule
+import net.minestom.server.utils.NamespaceID
+import net.minestom.server.world.biomes.Biome
+import net.minestom.server.world.biomes.BiomeEffects
 import org.tinylog.kotlin.Logger
 import redis.clients.jedis.JedisPubSub
 import world.cepi.kstom.Manager
@@ -40,6 +45,8 @@ import java.nio.file.Path
 import java.time.Duration
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicInteger
+import java.util.concurrent.atomic.AtomicLong
 import kotlin.math.PI
 import kotlin.math.cos
 import kotlin.math.sin
@@ -57,6 +64,9 @@ class LobbyExtension : Extension() {
         val playerCountCache = ConcurrentHashMap<String, Int>()
 
         lateinit var lobbyInstance: InstanceContainer
+        lateinit var lobbyBiome: Biome
+
+        val buttonPresses = AtomicLong(0)
     }
 
     override fun initialize() {
@@ -65,12 +75,33 @@ class LobbyExtension : Extension() {
 
         Logger.info("Preloading lobby world")
         lobbyInstance = Manager.instance.createInstanceContainer()
-        lobbyInstance.chunkLoader = AnvilLoader("./lobby")
+        lobbyInstance.chunkLoader = AnvilLoader("./lobbysnow")
         lobbyInstance.timeRate = 0
         lobbyInstance.timeUpdate = null
         lobbyInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
         lobbyInstance.enableAutoChunkLoad(false)
+
+        // SNOWY_PLAINS
+        lobbyBiome = Biome.builder()
+            .category(Biome.Category.PLAINS)
+            .scale(0.05F)
+            .depth(0.125F)
+            .name(NamespaceID.from("minecraft:snowy_plains"))
+            .temperature(0.05F)
+            .downfall(0.3F)
+            .precipitation(Biome.Precipitation.SNOW)
+            .effects(
+                BiomeEffects.builder()
+                    .fogColor(12638463)
+                    .waterColor(4159204)
+                    .waterFogColor(329011)
+                    .skyColor(8364543)
+                    .grassColorModifier(BiomeEffects.GrassColorModifier.NONE)
+                    .build()
+            )
+            .build()
+        MinecraftServer.getBiomeManager().addBiome(lobbyBiome)
 
         val radius = 8
         for (x in -radius..radius) {
@@ -107,45 +138,45 @@ class LobbyExtension : Extension() {
             ))
         }
 
-        val jedisScope = CoroutineScope(Dispatchers.IO)
-        jedisScope.launch {
-            val registerGamePubSub = object : JedisPubSub() {
-                override fun onMessage(channel: String, message: String) {
-                    val args = message.split(" ")
-                    val gameName = args[0]
+        runBlocking {
+            launch {
+                val registerGamePubSub = object : JedisPubSub() {
+                    override fun onMessage(channel: String, message: String) {
+                        val args = message.split(" ")
+                        val gameName = args[0]
 
-                    playerCountCache[gameName] = 0
-                    gameSelectorGUI.refreshPlayers(gameName, 0)
-                    val games = GameManager.getGames("lobby")!!
-                    games.forEach {
-                        val lobbyGame = it as LobbyExtensionGame
-                        lobbyGame.refreshHolo(gameName, 0)
+                        playerCountCache[gameName] = 0
+                        gameSelectorGUI.refreshPlayers(gameName, 0)
+                        val games = GameManager.getGames("lobby")!!
+                        games.forEach {
+                            val lobbyGame = it as LobbyExtensionGame
+                            lobbyGame.refreshHolo(gameName, 0)
+                        }
                     }
                 }
+                jedis?.subscribe(registerGamePubSub, "registergame")
             }
-            jedis?.subscribe(registerGamePubSub, "registergame")
-        }
 
-        jedisScope.launch {
-            val playerCountPubSub = object : JedisPubSub() {
-                override fun onMessage(channel: String, message: String) {
-                    val args = message.split(" ")
-                    val gameName = args[0]
-                    val playerCount = args[1].toInt()
+            launch {
+                val playerCountPubSub = object : JedisPubSub() {
+                    override fun onMessage(channel: String, message: String) {
+                        val args = message.split(" ")
+                        val gameName = args[0]
+                        val playerCount = args[1].toInt()
 
-                    playerCountCache[gameName] = playerCount
-                    gameSelectorGUI.refreshPlayers(gameName, playerCount)
-                    val games = GameManager.getGames("lobby")!!
+                        playerCountCache[gameName] = playerCount
+                        gameSelectorGUI.refreshPlayers(gameName, playerCount)
+                        val games = GameManager.getGames("lobby")!!
 
-                    games.forEach {
-                        val lobbyGame = it as LobbyExtensionGame
-                        lobbyGame.refreshHolo(gameName, playerCount)
+                        games.forEach {
+                            val lobbyGame = it as LobbyExtensionGame
+                            lobbyGame.refreshHolo(gameName, playerCount)
+                        }
                     }
                 }
+                jedis?.subscribe(playerCountPubSub, "playercount")
             }
-            jedis?.subscribe(playerCountPubSub, "playercount")
         }
-        
 
 
         eventNode.listenOnly<PlayerSpawnEvent> {
@@ -161,6 +192,8 @@ class LobbyExtension : Extension() {
                         .append(player.displayName!!)
                         .append(Component.text(", to ", NamedTextColor.GRAY))
                         .append("<bold><gradient:gold:light_purple>EmortalMC".asMini())
+//                        .append(Component.newline())
+//                        .append("There are currently ")
                 )
 
                 player.scheduler().buildTask {
@@ -181,6 +214,8 @@ class LobbyExtension : Extension() {
                 }.delay(TaskSchedule.millis(500)).schedule()
             }
         }
+
+        SnowCommand.register()
 
         SpawnCommand.register()
         SitCommand.register()

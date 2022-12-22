@@ -62,7 +62,7 @@ class GameSelectorGUI : GUI() {
         loreList.addAll(listOf(
             "",
             "<dark_gray>/play $gameName",
-            if (players == -1) "<color:#d93636><bold>Game unavailable" else "<green>● <bold>${players}</bold> playing"
+            "<green>● <bold>${players}</bold> playing"
         ))
 
         return ItemStack.builder(gameListing.item)
