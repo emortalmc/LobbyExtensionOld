@@ -7,9 +7,8 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.instance.Instance
 import net.minestom.server.timer.TaskSchedule
-import org.json.XMLTokener.entity
 
-object DolphinMount : Mount(Component.text("Dolphin", NamedTextColor.AQUA)) {
+sealed class DolphinMount : Mount(Component.text("Dolphin", NamedTextColor.AQUA)) {
 
     override fun spawn(instance: Instance, player: Player) {
         val entity = SeatEntity(physics = true, entityType = EntityType.DOLPHIN) {

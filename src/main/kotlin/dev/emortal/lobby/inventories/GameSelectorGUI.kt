@@ -2,18 +2,17 @@ package dev.emortal.lobby.inventories
 
 import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.inventory.GUI
+import dev.emortal.immortal.util.noItalic
 import dev.emortal.immortal.util.sendServer
-import dev.emortal.lobby.LobbyExtension
+import dev.emortal.lobby.LobbyExtensionMain
 import dev.emortal.lobby.config.GameListing
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.minimessage.MiniMessage
 import net.minestom.server.inventory.Inventory
 import net.minestom.server.inventory.InventoryType
 import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
-import world.cepi.kstom.adventure.asMini
-import world.cepi.kstom.adventure.noItalic
-import world.cepi.kstom.util.setItemStacks
 
 class GameSelectorGUI : GUI() {
 
@@ -21,16 +20,12 @@ class GameSelectorGUI : GUI() {
         val inventoryTitle = Component.text("Games", NamedTextColor.BLACK)
         val inventory = Inventory(InventoryType.CHEST_4_ROW, inventoryTitle)
 
-        val itemStackMap = mutableMapOf<Int, ItemStack>()
-
-        LobbyExtension.gameListingConfig.gameListings.forEach {
+        LobbyExtensionMain.gameListingConfig.gameListings.forEach {
             if (!it.value.itemVisible) return@forEach
 
-            val item = itemFromListing(it.key, it.value, LobbyExtension.playerCountCache[it.key] ?: 0)
-            itemStackMap[it.value.slot] = item
+            val item = itemFromListing(it.key, it.value, LobbyExtensionMain.playerCountCache[it.key] ?: 0)
+            inventory.setItemStack(it.value.slot, item)
         }
-
-        inventory.setItemStacks(itemStackMap)
 
         inventory.addInventoryCondition { player, _, _, inventoryConditionResult ->
             inventoryConditionResult.isCancel = true
@@ -48,7 +43,7 @@ class GameSelectorGUI : GUI() {
     }
 
     fun refreshPlayers(gameName: String, players: Int) {
-        val gameListing = LobbyExtension.gameListingConfig.gameListings[gameName] ?: return
+        val gameListing = LobbyExtensionMain.gameListingConfig.gameListings[gameName] ?: return
         if (!gameListing.itemVisible) return
 
         val item = itemFromListing(gameName, gameListing, players)
@@ -65,10 +60,12 @@ class GameSelectorGUI : GUI() {
             "<green>● <bold>${players}</bold> playing"
         ))
 
+        val miniMessage = MiniMessage.miniMessage()
+
         return ItemStack.builder(gameListing.item)
             .meta {
-                it.displayName(gameListing.npcTitles.last().asMini().noItalic())
-                it.lore(loreList.map { loreLine -> loreLine.asMini().noItalic() })
+                it.displayName(miniMessage.deserialize(gameListing.npcTitles.last()).noItalic())
+                it.lore(loreList.map { loreLine -> miniMessage.deserialize(loreLine).noItalic() })
                 it.hideFlag(*ItemHideFlag.values())
                 it.setTag(GameManager.gameNameTag, gameName)
             }

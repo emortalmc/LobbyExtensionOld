@@ -9,17 +9,18 @@ import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
 import net.minestom.server.command.builder.arguments.ArgumentType
+import net.minestom.server.command.builder.suggestion.SuggestionEntry
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
-import world.cepi.kstom.command.arguments.suggest
-import java.util.*
 
 object MountCommand : Command("mount") {
 
 
     init {
-        val mountArg = ArgumentType.StringArray("mount").suggest {
-            Mount.registeredMap.keys.toList()
+        val mountArg = ArgumentType.StringArray("mount").setSuggestionCallback { sender, context, suggestion ->
+            Mount.registeredMap.keys.forEach {
+                suggestion.addEntry(SuggestionEntry(it))
+            }
         }
 
         setCondition { sender, _ ->
@@ -41,7 +42,7 @@ object MountCommand : Command("mount") {
             else player.vehicle?.removePassenger(player)
 
             val mount = context.get(mountArg).joinToString(separator = " ")
-            val mountObj: Mount = Mount.registeredMap[mount] ?: return@addConditionalSyntax
+            val mountObj: Mount = Mount.registeredMap[mount]?.call() ?: return@addConditionalSyntax
             mountObj.spawn(player.instance!!, player)
             game.mountMap[player.uuid] = mountObj
         }, mountArg)

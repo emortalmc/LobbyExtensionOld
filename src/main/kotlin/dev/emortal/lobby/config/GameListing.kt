@@ -1,10 +1,10 @@
 package dev.emortal.lobby.config
 
+import dev.emortal.immortal.serializer.MaterialSerializer
+import dev.emortal.immortal.serializer.PositionSerializer
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.entity.EntityType
 import net.minestom.server.item.Material
-import world.cepi.kstom.serializer.MaterialSerializer
-import world.cepi.kstom.serializer.PositionSerializer
 
 @kotlinx.serialization.Serializable
 class GameListing(

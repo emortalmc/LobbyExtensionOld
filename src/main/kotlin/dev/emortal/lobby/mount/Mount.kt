@@ -12,8 +12,8 @@ import kotlin.reflect.full.primaryConstructor
 sealed class Mount(val title: Component) {
 
     companion object {
-        val registeredMap: Map<String, Mount>
-            get() = Mount::class.sealedSubclasses.mapNotNull { it.objectInstance }.associateBy { it.javaClass.simpleName }
+        val registeredMap
+            get() = Mount::class.sealedSubclasses.mapNotNull { it.primaryConstructor }.associateBy { it.javaClass.simpleName }
         val mountTag = Tag.Byte("mount")
     }
 

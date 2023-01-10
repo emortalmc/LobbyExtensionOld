@@ -1,6 +1,7 @@
 package dev.emortal.lobby.games
 
 import net.minestom.server.MinecraftServer
+import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
@@ -21,6 +22,17 @@ class SeatEntity(physics: Boolean = false, entityType: EntityType = EntityType.A
 
         setNoGravity(true)
         hasPhysics = physics
+    }
+
+    override fun updateVelocity(wasOnGround: Boolean, flying: Boolean, positionBeforeMove: Pos?, newVelocity: Vec?) {
+        if (newVelocity != null) {
+            val newVelocity = newVelocity // Convert from block/tick to block/sec
+                .mul(MinecraftServer.TICK_PER_SECOND.toDouble()) // Prevent infinitely decreasing velocity
+                .mul(0.95)
+                .apply(Vec.Operator.EPSILON)
+
+            velocity = newVelocity
+        }
     }
 
     override fun removePassenger(entity: Entity) {

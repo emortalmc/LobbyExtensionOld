@@ -7,7 +7,7 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.instance.Instance
 
-object NoclipMount : Mount(Component.text("Noclip", NamedTextColor.RED)) {
+sealed class NoclipMount : Mount(Component.text("Noclip", NamedTextColor.RED)) {
 
     override fun spawn(instance: Instance, player: Player) {
         val entity = SeatEntity(physics = false, entityType = EntityType.MINECART) {

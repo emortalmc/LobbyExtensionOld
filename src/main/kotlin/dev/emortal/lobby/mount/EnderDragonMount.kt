@@ -7,9 +7,8 @@ import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.Player
 import net.minestom.server.instance.Instance
 import net.minestom.server.timer.TaskSchedule
-import org.json.XMLTokener.entity
 
-object EnderDragonMount : Mount(Component.text("Enderdargon", NamedTextColor.AQUA)) {
+sealed class EnderDragonMount : Mount(Component.text("Enderdargon", NamedTextColor.AQUA)) {
 
     override fun spawn(instance: Instance, player: Player) {
         val entity = SeatEntity(physics = true, entityType = EntityType.ENDER_DRAGON) {

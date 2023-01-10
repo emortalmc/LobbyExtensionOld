@@ -3,16 +3,17 @@ package dev.emortal.lobby.games
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
-import dev.emortal.immortal.util.MinestomRunnable
-import dev.emortal.immortal.util.RunnableGroup
-import dev.emortal.immortal.util.cancel
+import dev.emortal.immortal.util.asPos
+import dev.emortal.immortal.util.noItalic
+import dev.emortal.immortal.util.playSound
 import dev.emortal.immortal.util.showFireworkWithDuration
-import dev.emortal.lobby.LobbyExtension
-import dev.emortal.lobby.LobbyExtension.Companion.lobbyBiome
-import dev.emortal.lobby.LobbyExtension.Companion.npcs
+import dev.emortal.lobby.LobbyExtensionMain
+import dev.emortal.lobby.LobbyExtensionMain.Companion.npcs
 import dev.emortal.lobby.mount.Mount
 import dev.emortal.lobby.occurrences.Occurrence
 import dev.emortal.nbstom.MusicPlayerInventory
+import dev.emortal.tnt.TNTLoader
+import dev.emortal.tnt.source.FileTNTSource
 import net.kyori.adventure.key.Key
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
@@ -25,55 +26,35 @@ import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
 import net.minestom.server.entity.EntityType
-import net.minestom.server.entity.GameMode
 import net.minestom.server.entity.ItemEntity
 import net.minestom.server.entity.Player
 import net.minestom.server.event.EventNode
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
-import net.minestom.server.event.item.PickupItemEvent
 import net.minestom.server.event.player.*
 import net.minestom.server.event.trait.InstanceEvent
-import net.minestom.server.instance.Chunk
 import net.minestom.server.instance.Instance
 import net.minestom.server.instance.batch.AbsoluteBlockBatch
-import net.minestom.server.instance.batch.Batch
 import net.minestom.server.instance.batch.BatchOption
 import net.minestom.server.instance.block.Block
-import net.minestom.server.item.Enchantment
-import net.minestom.server.item.ItemHideFlag
 import net.minestom.server.item.ItemStack
 import net.minestom.server.item.Material
 import net.minestom.server.item.firework.FireworkEffect
 import net.minestom.server.item.firework.FireworkEffectType
 import net.minestom.server.network.packet.client.play.ClientPlayerBlockPlacementPacket
 import net.minestom.server.network.packet.client.play.ClientSteerVehiclePacket
-import net.minestom.server.network.packet.server.play.EntitySoundEffectPacket
-import net.minestom.server.resourcepack.ResourcePack
 import net.minestom.server.sound.SoundEvent
 import net.minestom.server.tag.Tag
 import net.minestom.server.timer.Task
 import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.Direction
-import net.minestom.server.utils.NamespaceID
-import net.minestom.server.utils.time.TimeUnit
-import net.minestom.server.world.biomes.Biome
-import net.minestom.server.world.biomes.BiomeEffects
-import world.cepi.kstom.Manager
-import world.cepi.kstom.Manager.biome
-import world.cepi.kstom.Manager.block
-import world.cepi.kstom.adventure.color
-import world.cepi.kstom.adventure.noItalic
-import world.cepi.kstom.event.listenOnly
-import world.cepi.kstom.util.asPos
-import world.cepi.kstom.util.playSound
 import world.cepi.particle.Particle
 import world.cepi.particle.ParticleType
 import world.cepi.particle.data.OffsetAndSpeed
-import world.cepi.particle.extra.Dust
 import world.cepi.particle.extra.DustTransition
 import world.cepi.particle.showParticle
 import java.awt.Color
+import java.nio.file.Path
 import java.time.Duration
 import java.util.*
 import java.util.concurrent.CompletableFuture
@@ -86,30 +67,6 @@ import kotlin.math.sin
 
 class LobbyExtensionGame : Game() {
 
-    private val christmasBookNames = setOf(
-        "The Polar Express",
-        "The Velveteen Rabbit",
-        "A Christmas Carol",
-        "How the Grinch Stole Christmas!",
-        "Letters from Father Christmas",
-        "A Christmas Memory",
-        "The Nutcracker",
-        "Rudolph the Red-nosed Reindeer",
-        "The Snowman",
-        "Miracle on 34th Street",
-        "Father Christmas",
-        "The Snow Queen",
-        "The Lion, the Witch and the Wardrobe",
-        "The Night Before Christmas",
-        "The Twelve Days of Christmas",
-        "Dream Snow",
-        "The Jolly Christmas Postman",
-        "The Biggest Snowman Ever",
-        "The Christmas Tale of Peter Rabbit",
-        "Stick Man"
-    )
-
-
     override val allowsSpectators = false
     override val countdownSeconds = 0
     override val maxPlayers = 50
@@ -121,13 +78,16 @@ class LobbyExtensionGame : Game() {
 
     private val gsonSerializer = GsonComponentSerializer.gson()
 
-    private val lightsOutGrid = Array(5) { BooleanArray(5) { false } }
+    private val lightsOutGrid = Array(5) { BooleanArray(5) { true } }
     private val lightsOutX = 5
     private val lightsOutY = 64
     private val lightsOutZ = -12
 
     val armourStandSeatList = CopyOnWriteArraySet<Point>()
     val mountMap = ConcurrentHashMap<UUID, Mount>()
+
+    private val playerLaunchTasks = ConcurrentHashMap<UUID, Task>()
+    private val playerLaunchPowers = ConcurrentHashMap<UUID, Int>()
 
     var currentOccurrence: Occurrence? = null
     var occurrenceStopTask: Task? = null
@@ -145,7 +105,7 @@ class LobbyExtensionGame : Game() {
             instance!!.loadChunk(spawnPosition).thenRun {
                 hologram.setInstance(spawnPosition, instance!!)
 
-                val playerCountCache = LobbyExtension.playerCountCache[it.gameName]
+                val playerCountCache = LobbyExtensionMain.playerCountCache[it.gameName]
 
                 hologram.setLine(it.hologramLines.size - 1, Component.text("${playerCountCache ?: 0} online", NamedTextColor.GRAY))
             }
@@ -156,11 +116,34 @@ class LobbyExtensionGame : Game() {
         instance!!.loadChunk(signPos).thenAccept {
             it.setBlock(signPos.add(-1.0, 0.0, 0.0), Block.AIR)
 
-            val clickedNum = LobbyExtension.buttonPresses.get()
+            val clickedNum = LobbyExtensionMain.buttonPresses.get()
+            val componentText1 = Component.text("This sign has", NamedTextColor.BLACK)
+            val componentText4 = Component.text()
+                .append(Component.text(clickedNum, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD))
+                .append(Component.text(" times", TextColor.color(212, 11, 212)))
+                .build()
+
             val newBlock = instance!!.getBlock(signPos)
-                .withTag(Tag.String("Text1"), "{\"extra\":[{\"bold\":false,\"color\":\"black\",\"text\":\"This sign has\"}],\"text\":\"\"}")
-                .withTag(Tag.String("Text4"), "{\"extra\":[{\"bold\":true,\"color\":\"light_purple\",\"text\":\"$clickedNum \"},{\"color\":\"light_purple\",\"text\":\"times\"}],\"text\":\"\"}")
+                .withTag(Tag.String("Text1"), gsonSerializer.serialize(componentText1))
+                .withTag(Tag.String("Text4"), gsonSerializer.serialize(componentText4))
             it.setBlock(signPos, newBlock)
+
+            val batch = AbsoluteBlockBatch(BatchOption().setSendUpdate(false)) // update is sent later to fix button anyway
+
+            for (x in 5..9) {
+                for (y in -12..-8) {
+                    batch.setBlock(x, 64, y, Block.REDSTONE_LAMP)
+                }
+            }
+
+            repeat(20) {
+                val rand = ThreadLocalRandom.current()
+                lightsOutClick(batch, rand.nextInt(0, 5), rand.nextInt(0, 5))
+            }
+
+            batch.apply(instance!!) {
+                it.sendChunk()
+            }
 
             instance!!.setBlock(7, 65, -6, Block.BIRCH_BUTTON.withProperty("face", "floor").withProperty("facing", "north"))
         }
@@ -176,57 +159,49 @@ class LobbyExtensionGame : Game() {
         armourStandSeatList.clear()
     }
 
-    val playerGroupMap = ConcurrentHashMap<UUID, RunnableGroup>()
 
     override fun playerJoin(player: Player) {
 
         if (player.username == "emortaldev") {
-            val group = RunnableGroup()
-            playerGroupMap[player.uuid] = group
-
-            object : MinestomRunnable(repeat = Duration.ofMillis(MinecraftServer.TICK_MS.toLong()), group = group) {
-                var heightI = 0.0
-                var spinI = 0.0
-                var yRot = 0.0
-                var lastPos = player.position
-
-                override fun run() {
-                    if (player.position.distanceSquared(lastPos) > 0.2 * 0.2) {
-                        lastPos = player.position
-                        return
-                    }
+            var heightI = 0.0
+            var spinI = 0.0
+            var yRot = 0.0
+            var lastPos = player.position
+            player.scheduler().buildTask {
+                if (player.position.distanceSquared(lastPos) > 0.0) {
                     lastPos = player.position
+                    return@buildTask
+                }
+                lastPos = player.position
 
-                    yRot += 0.05
+                yRot += 0.05
 
-                    if (yRot > PI*2) yRot = 0.0
+                if (yRot > PI*2) yRot = 0.0
 
-                    repeat(3) {
-                        heightI += 0.15
-                        spinI += 0.15
-                        if (spinI > PI*2) spinI = 0.0
-                        if (heightI > PI*2) heightI = 0.0
+                repeat(3) {
+                    heightI += 0.15
+                    spinI += 0.15
+                    if (spinI > PI*2) spinI = 0.0
+                    if (heightI > PI*2) heightI = 0.0
 
-                        instance?.showParticle(
-                            Particle.particle(
-                                type = ParticleType.DUST_COLOR_TRANSITION,
-                                data = OffsetAndSpeed(),
-                                extraData = DustTransition(1f, 0.5f, 0f, 1f, 0f, 1f, 1.15f),
-                                count = 1
-                            ),
-                            player.position.add(
-                                Vec(
-                                    cos(spinI) * 1.2,
-                                    (sin(heightI) * 0.5),
-                                    sin(spinI) * 1.2
-                                ).rotateAroundY(yRot).add(0.0, 1.0, 0.0)
-                            ).asVec()
-                        )
-
-                    }
+                    instance?.showParticle(
+                        Particle.particle(
+                            type = ParticleType.DUST_COLOR_TRANSITION,
+                            data = OffsetAndSpeed(),
+                            extraData = DustTransition(1f, 0.5f, 0f, 1f, 0f, 1f, 1.15f),
+                            count = 1
+                        ),
+                        player.position.add(
+                            Vec(
+                                cos(spinI) * 1.2,
+                                (sin(heightI) * 0.5),
+                                sin(spinI) * 1.2
+                            ).rotateAroundY(yRot).add(0.0, 1.0, 0.0)
+                        ).asVec()
+                    )
 
                 }
-            }
+            }.repeat(TaskSchedule.nextTick()).schedule()
         }
 
         npcs.forEach {
@@ -244,17 +219,12 @@ class LobbyExtensionGame : Game() {
 
         player.inventory.setItemStack(4, compassItemStack)
 
-        //player.isAllowFlying = player.hasLuckPermission("lobby.fly")
+        player.isAllowFlying = player.hasLuckPermission("lobby.fly")
 
         player.inventory.setItemStack(
             8,
-            ItemStack.builder(Material.MUSIC_DISC_BLOCKS)
-                .displayName(Component.text("Music", NamedTextColor.GOLD).noItalic())
-                .meta { meta ->
-                    meta.enchantment(Enchantment.INFINITY, 1)
-                    meta.hideFlag(ItemHideFlag.HIDE_ENCHANTS)
-
-                }
+            ItemStack.builder(Material.JUKEBOX)
+                .displayName(Component.text("Music Player", NamedTextColor.GOLD).noItalic())
                 .build()
         )
 
@@ -266,102 +236,139 @@ class LobbyExtensionGame : Game() {
             player.inventory.setItemStack(7, fireworkItemstack)
         }
 
-//        if (player.hasLuckPermission("lobby.bobux")) {
-//            val bobuxItemStack = ItemStack.builder(Material.SUNFLOWER)
-//                .displayName(Component.text("Great British Pound", NamedTextColor.GOLD).noItalic())
-//                .amount(64)
-//                .build()
-//
-//            player.inventory.setItemStack(0, bobuxItemStack)
-//        }
 
-//        if (player.hasLuckPermission("lobby.doot")) {
-//            val trumpetItemstack = ItemStack.builder(Material.PHANTOM_MEMBRANE)
-//                .displayName(Component.text("Trumpet", NamedTextColor.YELLOW).noItalic())
-//                .meta {
-//                    it.customModelData(1)
-//                }
-//                .build()
-//
-//            player.inventory.setItemStack(0, trumpetItemstack)
-//        }
+        if (player.hasLuckPermission("lobby.doot")) {
+            val trumpetItemstack = ItemStack.builder(Material.PHANTOM_MEMBRANE)
+                .displayName(Component.text("Trumpet", NamedTextColor.YELLOW).noItalic())
+                .meta {
+                    it.customModelData(1)
+                }
+                .build()
+
+            player.inventory.setItemStack(0, trumpetItemstack)
+        }
     }
 
     override fun playerLeave(player: Player) {
-        playerGroupMap[player.uuid]?.cancelAll()
-        playerGroupMap.remove(player.uuid)
         npcs.forEach {
             it.removeViewer(player)
         }
     }
 
     override fun registerEvents(eventNode: EventNode<InstanceEvent>) {
-        eventNode.cancel<InventoryPreClickEvent>()
-        eventNode.cancel<PlayerSwapItemEvent>()
+        eventNode.addListener(InventoryPreClickEvent::class.java) { e ->
+            e.isCancelled = true
+        }
+        eventNode.addListener(PlayerSwapItemEvent::class.java) { e ->
+            e.isCancelled = true
+        }
 
-        eventNode.cancel<PlayerBlockBreakEvent>()
-        eventNode.cancel<PlayerBlockPlaceEvent>()
+        eventNode.addListener(PlayerBlockBreakEvent::class.java) { e ->
+            e.isCancelled = true
+        }
+        eventNode.addListener(PlayerBlockPlaceEvent::class.java) { e ->
+            e.isCancelled = true
+        }
 
-        eventNode.listenOnly<PlayerEntityInteractEvent> {
-            if (!player.itemInMainHand.isAir) return@listenOnly
-            val interactedPlayer = target as? Player ?: return@listenOnly
-            if (player.hasLuckPermission("lobby.pickupplayer")) {
-                player.addPassenger(interactedPlayer)
-                if (interactedPlayer.vehicle != null && interactedPlayer.vehicle !is Player) {
-                    interactedPlayer.vehicle?.remove()
+        eventNode.addListener(PlayerEntityInteractEvent::class.java) { e ->
+            val player = e.player
+            val target = e.target as? Player ?: return@addListener
+
+            if (!player.itemInMainHand.isAir) return@addListener
+            if (e.hand != Player.Hand.MAIN) return@addListener
+
+            if (player.isSneaking && player.hasLuckPermission("lobby.pickupplayer")) {
+                player.addPassenger(target)
+                if (target.vehicle != null && target.vehicle !is Player) {
+                    target.vehicle?.remove()
                 }
+
+                playerLaunchTasks[player.uuid]?.cancel()
+                playerLaunchTasks[player.uuid] = instance!!.scheduler().buildTask(object : Runnable {
+                    var i = 1
+
+                    override fun run() {
+                        player.sendActionBar(Component.text("Launching with power: $i", NamedTextColor.YELLOW))
+                        if (i < 40) {
+                            i++
+                            playerLaunchPowers[player.uuid] = i
+                        }
+                    }
+                }).repeat(TaskSchedule.tick(2)).schedule()
             }
         }
-        eventNode.listenOnly<PlayerStopSneakingEvent> {
+        eventNode.addListener(PlayerStopSneakingEvent::class.java) { e ->
+            val player = e.player
+
+            playerLaunchTasks[player.uuid]?.cancel()
+            playerLaunchTasks.remove(player.uuid)
+
+            if (player.passengers.isEmpty()) return@addListener
+            player.playSound(Sound.sound(SoundEvent.ENTITY_BAT_TAKEOFF, Sound.Source.MASTER, 1f, 1.1f))
+
+
             player.passengers.forEach {
                 player.removePassenger(it)
-                it.velocity = this.player.position.direction().mul(MinecraftServer.TICK_PER_SECOND.toDouble()).mul(1.5)
+                it.velocity = player.position.direction().mul(playerLaunchPowers[player.uuid]!!.toDouble() * 2)
             }
+            playerLaunchPowers.remove(player.uuid)
         }
 
-        eventNode.listenOnly<PlayerUseItemEvent> {
-            if (itemStack.material() == Material.COMPASS) {
-                this.isCancelled = true
-                player.openInventory(LobbyExtension.gameSelectorGUI.inventory)
-                player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1f, 1.5f))
-                return@listenOnly
-            }
+        eventNode.addListener(PlayerUseItemEvent::class.java) { e ->
+            e.isCancelled = true
 
-            if (this.itemStack.material() == Material.MUSIC_DISC_BLOCKS) {
-                this.isCancelled = true
-                player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1f, 2f))
-                player.openInventory(MusicPlayerInventory.inventory)
-                return@listenOnly
-            }
+            val player = e.player
 
-            if (itemStack.material() == Material.PHANTOM_MEMBRANE) {
-                val rand = ThreadLocalRandom.current()
-                instance.playSound(Sound.sound(Key.key("item.trumpet.doot"), Sound.Source.MASTER, 1f, rand.nextFloat(0.8f, 1.2f)), player.position)
-                instance.getNearbyEntities(player.position, 8.0).filter { it.entityType == EntityType.PLAYER && it != player }.forEach {
-                    it.velocity = it.position.sub(player.position).asVec().normalize().mul(60.0).withY { 17.0 }
+            when (e.itemStack.material()) {
+                Material.COMPASS -> {
+                    player.openInventory(LobbyExtensionMain.gameSelectorGUI.inventory)
+                    player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_BIT, Sound.Source.MASTER, 1f, 1.5f))
                 }
+
+                Material.JUKEBOX -> {
+                    player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1f, 2f))
+                    player.openInventory(MusicPlayerInventory.inventory)
+                }
+
+                Material.PHANTOM_MEMBRANE -> {
+                    val rand = ThreadLocalRandom.current()
+                    e.instance.playSound(Sound.sound(Key.key("item.trumpet.doot"), Sound.Source.MASTER, 1f, rand.nextFloat(0.8f, 1.2f)), player.position)
+                    e.instance.getNearbyEntities(player.position, 8.0)
+                        .filter { it.entityType == EntityType.PLAYER && it != player }
+                        .forEach {
+                            it.velocity = it.position.sub(player.position)
+                                .asVec()
+                                .normalize()
+                                .mul(60.0)
+                                .withY { 17.0 }
+                        }
+                }
+
+                else -> {}
             }
         }
 
-        eventNode.listenOnly<ItemDropEvent> {
-            if (itemStack.material() != Material.SUNFLOWER) {
-                isCancelled = true
-                return@listenOnly
+        eventNode.addListener(ItemDropEvent::class.java) { e ->
+            val item = e.itemStack
+            val player = e.player
+
+            if (item.material() != Material.SUNFLOWER) {
+                e.isCancelled = true
+                return@addListener
             }
-            val itemEntity = ItemEntity(itemStack)
+            val itemEntity = ItemEntity(item)
             itemEntity.setPickupDelay(Duration.ofMillis(2000))
             val velocity = player.position.direction().mul(6.0)
             itemEntity.velocity = velocity
-            itemEntity.boundingBox = itemEntity.boundingBox.expand(0.5, 0.0, 0.5)
             itemEntity.scheduleRemove(Duration.ofMinutes(3))
             itemEntity.isCustomNameVisible = true
-            itemEntity.customName = itemStack.displayName
+            itemEntity.customName = item.displayName
             itemEntity.setInstance(player.instance!!, player.position.add(0.0, 1.5, 0.0))
         }
 
-//        eventNode.listenOnly<PickupItemEvent> {
+//        eventNode.addListener<PickupItemEvent> {
 //            this.entity
-//            val player = entity as? Player ?: return@listenOnly
+//            val player = entity as? Player ?: return@addListener
 //
 //            val couldAdd = player.inventory.addItemStack(itemStack)
 //            isCancelled = !couldAdd
@@ -373,7 +380,10 @@ class LobbyExtensionGame : Game() {
 //            }
 //        }
 
-        eventNode.listenOnly<PlayerPacketEvent> {
+        eventNode.addListener(PlayerPacketEvent::class.java) { e ->
+            val packet = e.packet
+            val player = e.player
+
             if (packet is ClientSteerVehiclePacket) {
                 val steerPacket = packet as ClientSteerVehiclePacket
                 if (steerPacket.flags.toInt() == 2) {
@@ -382,18 +392,17 @@ class LobbyExtensionGame : Game() {
                         entity.removePassenger(player)
 
                     }
-                    return@listenOnly
+                    return@addListener
                 }
 
-                val mount = mountMap[player.uuid] ?: return@listenOnly
+                val mount = mountMap[player.uuid] ?: return@addListener
                 mount.move(player, steerPacket.forward, steerPacket.sideways)
 
             }
 
             if (packet is ClientPlayerBlockPlacementPacket) {
-                val placePacket = packet as ClientPlayerBlockPlacementPacket
 
-                if (player.itemInMainHand.material() == Material.FIREWORK_ROCKET && placePacket.hand == Player.Hand.MAIN) {
+                if (player.itemInMainHand.material() == Material.FIREWORK_ROCKET && packet.hand == Player.Hand.MAIN) {
 
                     val random = ThreadLocalRandom.current()
                     val effects = mutableListOf(
@@ -405,17 +414,21 @@ class LobbyExtensionGame : Game() {
                             listOf(net.minestom.server.color.Color(Color.HSBtoRGB(random.nextFloat(), 1f, 1f)))
                         )
                     )
-                    players.showFireworkWithDuration(instance, placePacket.blockPosition.add(placePacket.cursorPositionX.toDouble(), placePacket.cursorPositionY.toDouble(), placePacket.cursorPositionZ.toDouble()).asPos(), 20 + random.nextInt(0, 11), effects)
+                    players.showFireworkWithDuration(e.instance, packet.blockPosition.add(packet.cursorPositionX.toDouble(), packet.cursorPositionY.toDouble(), packet.cursorPositionZ.toDouble()).asPos(), 20 + random.nextInt(0, 11), effects)
                 }
 
             }
         }
 
-        eventNode.listenOnly<PlayerBlockInteractEvent> {
-            if (hand != Player.Hand.MAIN) return@listenOnly
+        eventNode.addListener(PlayerBlockInteractEvent::class.java) { e ->
+            val block = e.block
+            val blockPos = e.blockPosition
+            val player = e.player
+
+            if (e.hand != Player.Hand.MAIN) return@addListener
 
             if (block.compare(Block.BIRCH_BUTTON)) {
-                isCancelled = true
+                e.isCancelled = true
 
                 val batch = AbsoluteBlockBatch(BatchOption().setSendUpdate(false)) // update is sent later to fix button anyway
 
@@ -424,47 +437,49 @@ class LobbyExtensionGame : Game() {
                     lightsOutClick(batch, rand.nextInt(0, 5), rand.nextInt(0, 5))
                 }
 
-                batch.apply(instance) {
-                    instance.getChunkAt(blockPosition)?.sendChunk()
+                batch.apply(e.instance) {
+                    e.instance.getChunkAt(blockPos)?.sendChunk()
                 }
             }
 
             if (block.compare(Block.BIRCH_WALL_SIGN)) {
-                if (blockPosition.sameBlock(Pos(9.0, 66.0, -15.0))) {
-                    player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_HAT, Sound.Source.BLOCK, 0.75f, 2f), blockPosition.add(0.5))
+                if (blockPos.sameBlock(Pos(9.0, 66.0, -15.0))) {
+                    player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_HAT, Sound.Source.BLOCK, 0.75f, 2f), blockPos.add(0.5))
 
-                    val clickedNum = LobbyExtension.buttonPresses.incrementAndGet()
-                    val component = Component.text(clickedNum, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD)
+                    val clickedNum = LobbyExtensionMain.buttonPresses.incrementAndGet()
+                    val component = Component.text()
+                        .append(Component.text(clickedNum, NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD))
                         .append(Component.text(" times", TextColor.color(212, 11, 212)))
-                    val newBlock = instance.getBlock(blockPosition)
+                        .build()
+                    val newBlock = e.instance.getBlock(blockPos)
                         .withTag(Tag.String("Text4"), gsonSerializer.serialize(component))
 
-                    instance.setBlock(blockPosition, newBlock)
+                    e.instance.setBlock(blockPos, newBlock)
                 }
             }
 
             if (block.compare(Block.REDSTONE_LAMP)) {
                 val batch = AbsoluteBlockBatch()
-                lightsOutClick(batch, blockPosition.blockX() - lightsOutX, blockPosition.blockZ() - lightsOutZ)
-                batch.apply(instance) {}
+                lightsOutClick(batch, blockPos.blockX() - lightsOutX, blockPos.blockZ() - lightsOutZ)
+                batch.apply(e.instance) {}
 
                 player.playSound(Sound.sound(SoundEvent.BLOCK_WOODEN_BUTTON_CLICK_ON, Sound.Source.MASTER, 1f, 1.5f), Sound.Emitter.self())
             }
 
             if (block.name().contains("stair", true)) {
-                if (player.vehicle != null) return@listenOnly
-                if (armourStandSeatList.contains(blockPosition)) {
+                if (player.vehicle != null) return@addListener
+                if (armourStandSeatList.contains(blockPos)) {
                     player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
-                    return@listenOnly
+                    return@addListener
                 }
-                if (block.getProperty("half") == "top") return@listenOnly
-                if (!instance.getBlock(blockPosition.add(0.0, 1.0, 0.0)).compare(Block.AIR)) return@listenOnly
+                if (block.getProperty("half") == "top") return@addListener
+                if (!e.instance.getBlock(blockPos.add(0.0, 1.0, 0.0)).compare(Block.AIR)) return@addListener
 
                 val armourStand = SeatEntity {
-                    armourStandSeatList.remove(blockPosition)
+                    armourStandSeatList.remove(blockPos)
                 }
 
-                val spawnPos = blockPosition.add(0.5, 0.3, 0.5)
+                val spawnPos = blockPos.add(0.5, 0.3, 0.5)
                 val yaw = when (block.getProperty("facing")) {
                     "east" -> 90f
                     "south" -> 180f
@@ -472,12 +487,12 @@ class LobbyExtensionGame : Game() {
                     else -> 0f
                 }
 
-                armourStand.setInstance(instance, Pos(spawnPos, yaw, 0f))
+                armourStand.setInstance(e.instance, Pos(spawnPos, yaw, 0f))
                     .thenRun {
                         armourStand.addPassenger(player)
                     }
 
-                armourStandSeatList.add(blockPosition)
+                armourStandSeatList.add(blockPos)
             }
         }
     }
@@ -512,10 +527,11 @@ class LobbyExtensionGame : Game() {
     override fun instanceCreate(): CompletableFuture<Instance> {
         val instanceFuture = CompletableFuture<Instance>()
 
-        val newInstance = Manager.instance.createSharedInstance(LobbyExtension.lobbyInstance)
+        val newInstance = MinecraftServer.getInstanceManager().createInstanceContainer()
         newInstance.timeRate = 0
-        newInstance.time = 18000
+        newInstance.time = 0
         newInstance.timeUpdate = null
+        newInstance.chunkLoader = TNTLoader(FileTNTSource(Path.of("./lobby.tnt")))
         newInstance.setTag(Tag.Boolean("doNotAutoUnloadChunk"), true)
 
         newInstance.enableAutoChunkLoad(false)
@@ -527,17 +543,6 @@ class LobbyExtensionGame : Game() {
         for (x in -radius..radius) {
             for (z in -radius..radius) {
                 newInstance.loadChunk(x, z).thenAccept {
-                    for (x in 0 until Chunk.CHUNK_SIZE_X) {
-                        for (y in 60..80) {
-                            for (z in 0 until Chunk.CHUNK_SIZE_Z) {
-                                it.setBiome(x, y, z, lobbyBiome)
-                                if (it.getBlock(x, y, z).compare(Block.BROWN_GLAZED_TERRACOTTA)) {
-                                    it.setBlock(x, y, z, Block.AIR)
-                                    println("Changed block")
-                                }
-                            }
-                        }
-                    }
                     it.sendChunk()
                 }
             }
