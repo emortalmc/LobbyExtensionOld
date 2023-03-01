@@ -29,7 +29,6 @@ import net.minestom.server.timer.TaskSchedule
 import net.minestom.server.utils.NamespaceID
 import net.minestom.server.world.biomes.Biome
 import net.minestom.server.world.biomes.BiomeEffects
-import org.tinylog.kotlin.Logger
 import redis.clients.jedis.JedisPubSub
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
@@ -185,8 +184,6 @@ fun main() {
     cm.register(BlanksCommand)
 
     NBS.registerCommands()
-
-    Logger.info("[LobbyExtension] Initialized!")
 }
 
 class LobbyExtensionMain  {

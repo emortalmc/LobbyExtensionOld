@@ -1,8 +1,8 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "1.7.22"
-    kotlin("plugin.serialization") version "1.7.22"
+    id("org.jetbrains.kotlin.jvm") version "1.8.0"
+    kotlin("plugin.serialization") version "1.8.0"
     id("com.github.johnrengelman.shadow") version "7.1.2"
 
     java
@@ -15,7 +15,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.github.Minestom:Minestom:f291437ada")
+    implementation("com.github.hollow-cube:Minestom:e6d4a2cc91")
     implementation("dev.emortal.immortal:Immortal:3.0.1")
     implementation("dev.emortal.tnt:TNT:1.0.0")
 
