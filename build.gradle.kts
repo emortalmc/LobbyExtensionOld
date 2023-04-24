@@ -19,7 +19,8 @@ dependencies {
     implementation("dev.emortal.immortal:Immortal:3.0.1")
     implementation("dev.emortal.tnt:TNT:1.0.0")
 
-    implementation("com.github.EmortalMC:NBStom:14f581a301")
+//    implementation("com.github.EmortalMC:NBStom:14f581a301")
+    implementation("dev.emortal.nbstom:NBStom:1.0.0")
 
 //    compileOnly("redis.clients:jedis:4.3.1")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")

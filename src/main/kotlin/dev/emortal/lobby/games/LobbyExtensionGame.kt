@@ -3,7 +3,6 @@ package dev.emortal.lobby.games
 import dev.emortal.immortal.game.Game
 import dev.emortal.immortal.luckperms.PermissionUtils.hasLuckPermission
 import dev.emortal.immortal.npc.MultilineHologram
-import dev.emortal.immortal.util.asPos
 import dev.emortal.immortal.util.noItalic
 import dev.emortal.immortal.util.playSound
 import dev.emortal.immortal.util.showFireworkWithDuration
@@ -11,7 +10,7 @@ import dev.emortal.lobby.LobbyExtensionMain
 import dev.emortal.lobby.LobbyExtensionMain.Companion.npcs
 import dev.emortal.lobby.mount.Mount
 import dev.emortal.lobby.occurrences.Occurrence
-import dev.emortal.nbstom.MusicPlayerInventory
+import dev.emortal.nbstom.commands.MusicPlayerInventory
 import dev.emortal.tnt.TNTLoader
 import dev.emortal.tnt.source.FileTNTSource
 import net.kyori.adventure.key.Key
@@ -25,9 +24,12 @@ import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Point
 import net.minestom.server.coordinate.Pos
 import net.minestom.server.coordinate.Vec
+import net.minestom.server.entity.Entity
 import net.minestom.server.entity.EntityType
 import net.minestom.server.entity.ItemEntity
 import net.minestom.server.entity.Player
+import net.minestom.server.entity.metadata.animal.tameable.CatMeta
+import net.minestom.server.entity.metadata.animal.tameable.TameableAnimalMeta
 import net.minestom.server.event.EventNode
 import net.minestom.server.event.inventory.InventoryPreClickEvent
 import net.minestom.server.event.item.ItemDropEvent
@@ -160,7 +162,36 @@ class LobbyExtensionGame : Game() {
     }
 
 
+    val aprilFoolsMob: MutableMap<UUID, Entity> = ConcurrentHashMap<UUID, Entity>();
     override fun playerJoin(player: Player) {
+
+        player.isInvisible = true
+        player.isAutoViewable = false
+        val aprilFoolEntity = AprilFoolsEntity()
+
+        val meta = aprilFoolEntity.entityMeta as CatMeta
+        meta.color = CatMeta.Color.values().random()
+        meta.isTamed = true
+        meta.collarColor = ThreadLocalRandom.current().nextInt(15)
+        println(CatMeta.Color.values().random().name)
+        aprilFoolEntity.isCustomNameVisible = true
+        meta.isCustomNameVisible = true
+
+        val tameableMeta = aprilFoolEntity.entityMeta as TameableAnimalMeta
+        tameableMeta.isCustomNameVisible = true
+
+
+        aprilFoolEntity.scheduler().buildTask {
+            tameableMeta.isSitting = player.isSneaking
+
+            println("player yaw: " + player.position.yaw)
+            aprilFoolEntity.teleport(player.position)
+            aprilFoolEntity.setView(player.position.yaw, player.position.pitch)
+        }.repeat(TaskSchedule.nextTick()).schedule()
+        aprilFoolEntity.customName = Component.text(player.username)
+        aprilFoolEntity.setInstance(player.instance, player.position)
+
+        aprilFoolsMob[player.uuid] = aprilFoolEntity
 
         if (player.username == "emortaldev") {
             var heightI = 0.0
@@ -250,6 +281,7 @@ class LobbyExtensionGame : Game() {
     }
 
     override fun playerLeave(player: Player) {
+        aprilFoolsMob[player.uuid]?.remove()
         npcs.forEach {
             it.removeViewer(player)
         }
@@ -327,7 +359,7 @@ class LobbyExtensionGame : Game() {
 
                 Material.JUKEBOX -> {
                     player.playSound(Sound.sound(SoundEvent.BLOCK_NOTE_BLOCK_PLING, Sound.Source.MASTER, 1f, 2f))
-                    player.openInventory(MusicPlayerInventory.inventory)
+                    player.openInventory(MusicPlayerInventory.getInventory())
                 }
 
                 Material.PHANTOM_MEMBRANE -> {
@@ -414,7 +446,7 @@ class LobbyExtensionGame : Game() {
                             listOf(net.minestom.server.color.Color(Color.HSBtoRGB(random.nextFloat(), 1f, 1f)))
                         )
                     )
-                    players.showFireworkWithDuration(e.instance, packet.blockPosition.add(packet.cursorPositionX.toDouble(), packet.cursorPositionY.toDouble(), packet.cursorPositionZ.toDouble()).asPos(), 20 + random.nextInt(0, 11), effects)
+                    players.showFireworkWithDuration(e.instance, Pos.fromPoint(packet.blockPosition.add(packet.cursorPositionX.toDouble(), packet.cursorPositionY.toDouble(), packet.cursorPositionZ.toDouble())), 20 + random.nextInt(0, 11), effects)
                 }
 
             }

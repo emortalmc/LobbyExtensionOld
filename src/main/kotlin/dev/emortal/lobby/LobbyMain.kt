@@ -11,6 +11,8 @@ import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.games.LobbyExtensionGame
 import dev.emortal.lobby.inventories.GameSelectorGUI
 import dev.emortal.nbstom.NBS
+import dev.emortal.nbstom.commands.LoopCommand
+import dev.emortal.nbstom.commands.MusicCommand
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -183,7 +185,8 @@ fun main() {
     cm.register(StartOccurrence)
     cm.register(BlanksCommand)
 
-    NBS.registerCommands()
+    cm.register(MusicCommand())
+    cm.register(LoopCommand())
 }
 
 class LobbyExtensionMain  {
