@@ -1,32 +1,35 @@
 package dev.emortal.lobby.occurrences
 
-import dev.emortal.lobby.games.LobbyExtensionGame
 import net.minestom.server.timer.Task
 
 sealed class Occurrence {
 
+    companion object {
+        var currentOccurrence: Occurrence? = null
+        var occurrenceStopTask: Task? = null
+    }
     val taskList = mutableListOf<Task>()
 
-    fun start(game: LobbyExtensionGame) {
-        game.currentOccurrence = this@Occurrence
+    fun start() {
+        currentOccurrence = this@Occurrence
 
-        started(game)
+        started()
     }
 
-    abstract fun started(game: LobbyExtensionGame)
+    abstract fun started()
 
-    fun stop(game: LobbyExtensionGame) {
+    fun stop() {
         taskList.forEach {
             it.cancel()
         }
         taskList.clear()
-        game.occurrenceStopTask?.cancel()
-        game.currentOccurrence = null
-        game.occurrenceStopTask = null
+        occurrenceStopTask?.cancel()
+        currentOccurrence = null
+        occurrenceStopTask = null
 
-        stopped(game)
+        stopped()
     }
 
-    abstract fun stopped(game: LobbyExtensionGame)
+    abstract fun stopped()
 
 }

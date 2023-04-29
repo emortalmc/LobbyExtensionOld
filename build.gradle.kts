@@ -16,8 +16,9 @@ repositories {
 
 dependencies {
     implementation("com.github.hollow-cube:Minestom:e6d4a2cc91")
-    implementation("dev.emortal.immortal:Immortal:3.0.1")
     implementation("dev.emortal.tnt:TNT:1.0.0")
+
+    implementation("dev.emortal.immortal:Immortal:3.0.2")
 
 //    implementation("com.github.EmortalMC:NBStom:14f581a301")
     implementation("dev.emortal.nbstom:NBStom:1.0.0")

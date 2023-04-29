@@ -4,8 +4,9 @@ import dev.emortal.immortal.game.GameManager
 import dev.emortal.immortal.inventory.GUI
 import dev.emortal.immortal.util.noItalic
 import dev.emortal.immortal.util.sendServer
-import dev.emortal.lobby.LobbyExtensionMain
+import dev.emortal.lobby.LobbyMain
 import dev.emortal.lobby.config.GameListing
+import dev.emortal.lobby.modules.playerCountCache
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.kyori.adventure.text.minimessage.MiniMessage
@@ -20,10 +21,10 @@ class GameSelectorGUI : GUI() {
         val inventoryTitle = Component.text("Games", NamedTextColor.BLACK)
         val inventory = Inventory(InventoryType.CHEST_4_ROW, inventoryTitle)
 
-        LobbyExtensionMain.gameListingConfig.gameListings.forEach {
+        LobbyMain.gameListingConfig.gameListings.forEach {
             if (!it.value.itemVisible) return@forEach
 
-            val item = itemFromListing(it.key, it.value, LobbyExtensionMain.playerCountCache[it.key] ?: 0)
+            val item = itemFromListing(it.key, it.value, playerCountCache[it.key] ?: 0)
             inventory.setItemStack(it.value.slot, item)
         }
 
@@ -43,7 +44,7 @@ class GameSelectorGUI : GUI() {
     }
 
     fun refreshPlayers(gameName: String, players: Int) {
-        val gameListing = LobbyExtensionMain.gameListingConfig.gameListings[gameName] ?: return
+        val gameListing = LobbyMain.gameListingConfig.gameListings[gameName] ?: return
         if (!gameListing.itemVisible) return
 
         val item = itemFromListing(gameName, gameListing, players)

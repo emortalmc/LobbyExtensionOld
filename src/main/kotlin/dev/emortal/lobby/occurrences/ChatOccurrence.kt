@@ -3,7 +3,7 @@ package dev.emortal.lobby.occurrences
 import dev.emortal.immortal.util.armify
 import dev.emortal.immortal.util.centerText
 import dev.emortal.immortal.util.parsed
-import dev.emortal.lobby.games.LobbyExtensionGame
+import dev.emortal.lobby.LobbyMain
 import net.kyori.adventure.sound.Sound
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
@@ -22,9 +22,9 @@ class ChatOccurrence : Occurrence() {
         val playerCorrectTag = Tag.Boolean("playerCorrectChatOcc")
     }
 
-    override fun started(game: LobbyExtensionGame) {
+    override fun started() {
 
-        val instance = game.instance
+        val instance = LobbyMain.instance
 
         val word = Block.values().random().namespace().path().replace("_", " ")
 
@@ -39,36 +39,36 @@ class ChatOccurrence : Occurrence() {
             .build()
             .armify()
 
-        instance!!.setTag(chatOccTag, word)
+        instance.setTag(chatOccTag, word)
         instance.setTag(chatOccStartTag, System.currentTimeMillis())
 
-        game.sendMessage(startMessage)
+        instance.sendMessage(startMessage)
 
     }
 
-    override fun stopped(game: LobbyExtensionGame) {
-        val instance = game.instance
-        val correctPlayer = game.players.firstOrNull { it.hasTag(playerCorrectTag) }
+    override fun stopped() {
+        val instance = LobbyMain.instance
+        val correctPlayer = instance.players.firstOrNull { it.hasTag(playerCorrectTag) }
 
         if (correctPlayer == null) {
-            game.sendMessage(
+            instance.sendMessage(
                 Component.text()
                     .append(Component.text(centerText("Random Occurrence", bold = true), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD))
                     .append(Component.newline())
                     .append(Component.text(centerText("Fill in the blanks"), NamedTextColor.GRAY))
                     .append(Component.text("\n\nNo one got the word", NamedTextColor.RED))
                     .append(Component.text("\n\nThe word was: ", NamedTextColor.GRAY))
-                    .append(Component.text(instance!!.getTag(chatOccTag), NamedTextColor.WHITE))
+                    .append(Component.text(instance.getTag(chatOccTag), NamedTextColor.WHITE))
                     .build()
                     .armify()
             )
 
-            game.playSound(Sound.sound(SoundEvent.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
+            instance.playSound(Sound.sound(SoundEvent.ENTITY_VILLAGER_NO, Sound.Source.MASTER, 1f, 1f), Sound.Emitter.self())
         } else {
             correctPlayer.removeTag(playerCorrectTag)
 
-            val occurrenceSecs = ((System.currentTimeMillis() - instance!!.getTag(chatOccStartTag)!!) / 1000).parsed()
-            game.sendMessage(
+            val occurrenceSecs = ((System.currentTimeMillis() - instance.getTag(chatOccStartTag)!!) / 1000).parsed()
+            instance.sendMessage(
                 Component.text()
                     .append(Component.text(centerText("Random Occurrence", bold = true), NamedTextColor.LIGHT_PURPLE, TextDecoration.BOLD))
                     .append(Component.newline())

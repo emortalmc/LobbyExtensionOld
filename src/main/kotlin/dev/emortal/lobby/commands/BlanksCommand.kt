@@ -1,9 +1,9 @@
 package dev.emortal.lobby.commands
 
-import dev.emortal.immortal.game.GameManager.game
-import dev.emortal.lobby.games.LobbyExtensionGame
+import dev.emortal.lobby.LobbyMain
 import dev.emortal.lobby.occurrences.ChatOccurrence
 import dev.emortal.lobby.occurrences.ChatOccurrence.Companion.playerCorrectTag
+import dev.emortal.lobby.occurrences.Occurrence
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
@@ -25,17 +25,14 @@ object BlanksCommand : Command("blanks") {
 
             val input = context.get(inputArgument).joinToString(separator = " ")
 
-            val lobbyGame = (player.game ?: return@addSyntax) as? LobbyExtensionGame ?: return@addSyntax
-            val chatOccTag = lobbyGame.instance?.getTag(ChatOccurrence.chatOccTag) ?: return@addSyntax
-
-            if (input != chatOccTag) {
+            if (input != LobbyMain.instance.getTag(ChatOccurrence.chatOccTag)) {
                 player.sendMessage(Component.text("That is not the word!", NamedTextColor.RED))
                 return@addSyntax
             }
 
             player.sendMessage("Correct!")
             player.setTag(playerCorrectTag, true)
-            lobbyGame.currentOccurrence?.stop(lobbyGame)
+            Occurrence.currentOccurrence?.stop()
         }, inputArgument)
     }
 

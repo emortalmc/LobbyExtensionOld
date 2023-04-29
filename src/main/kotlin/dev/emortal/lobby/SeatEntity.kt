@@ -1,4 +1,4 @@
-package dev.emortal.lobby.games
+package dev.emortal.lobby
 
 import net.minestom.server.MinecraftServer
 import net.minestom.server.coordinate.Pos
@@ -26,12 +26,12 @@ class SeatEntity(physics: Boolean = false, entityType: EntityType = EntityType.A
 
     override fun updateVelocity(wasOnGround: Boolean, flying: Boolean, positionBeforeMove: Pos?, newVelocity: Vec?) {
         if (newVelocity != null) {
-            val newVelocity = newVelocity // Convert from block/tick to block/sec
+            val newVelocityy = newVelocity // Convert from block/tick to block/sec
                 .mul(MinecraftServer.TICK_PER_SECOND.toDouble()) // Prevent infinitely decreasing velocity
                 .mul(0.95)
                 .apply(Vec.Operator.EPSILON)
 
-            velocity = newVelocity
+            velocity = newVelocityy
         }
     }
 

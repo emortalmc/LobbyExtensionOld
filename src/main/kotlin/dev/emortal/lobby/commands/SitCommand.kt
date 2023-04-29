@@ -1,9 +1,8 @@
 package dev.emortal.lobby.commands
 
 import dev.emortal.immortal.game.GameManager
-import dev.emortal.immortal.game.GameManager.game
-import dev.emortal.lobby.games.LobbyExtensionGame
-import dev.emortal.lobby.games.SeatEntity
+import dev.emortal.lobby.SeatEntity
+import dev.emortal.lobby.modules.armourStandSeatList
 import net.kyori.adventure.text.Component
 import net.kyori.adventure.text.format.NamedTextColor
 import net.minestom.server.command.builder.Command
@@ -42,15 +41,13 @@ object SitCommand : Command("sit") {
                 player.position.blockZ().toDouble()
             )
 
-            val game = player.game as LobbyExtensionGame
-
-            if (game.armourStandSeatList.contains(roundedPos)) {
+            if (armourStandSeatList.contains(roundedPos)) {
                 player.sendActionBar(Component.text("You can't sit on someone's lap", NamedTextColor.RED))
                 return@setDefaultExecutor
             }
 
             val armourStand = SeatEntity {
-                game.armourStandSeatList.remove(roundedPos)
+                armourStandSeatList.remove(roundedPos)
             }
 
             val spawnPos = roundedPos.add(0.5, -0.3, 0.5)
@@ -59,7 +56,7 @@ object SitCommand : Command("sit") {
                     armourStand.addPassenger(player)
                 }
 
-            game.armourStandSeatList.add(roundedPos)
+            armourStandSeatList.add(roundedPos)
         }
     }
 
