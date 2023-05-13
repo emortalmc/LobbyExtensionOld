@@ -25,7 +25,7 @@ dependencies {
 
 //    compileOnly("redis.clients:jedis:4.3.1")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
-    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.7.1")
 }
 
 tasks {
