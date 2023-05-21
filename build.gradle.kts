@@ -24,7 +24,7 @@ dependencies {
 //    implementation("dev.emortal.nbstom:NBStom:1.0.0")
 
 //    compileOnly("redis.clients:jedis:4.3.1")
-    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")
+    compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.5.1")
     compileOnly("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.6.4")
 }
 
