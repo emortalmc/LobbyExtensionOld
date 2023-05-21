@@ -9,19 +9,19 @@ plugins {
 }
 
 repositories {
-    mavenCentral()
     mavenLocal()
+    mavenCentral()
     maven("https://jitpack.io")
 }
 
 dependencies {
-    implementation("com.github.hollow-cube:Minestom:e6d4a2cc91")
-    implementation("dev.emortal.tnt:TNT:1.0.0")
+    implementation("com.github.hollow-cube:Minestom:d5c92066ce")
+    implementation("dev.emortal.tnt:TNT:local")
 
-    implementation("dev.emortal.immortal:Immortal:3.0.2")
+    implementation("dev.emortal.immortal:Immortal:3.0.1")
 
-//    implementation("com.github.EmortalMC:NBStom:14f581a301")
-    implementation("dev.emortal.nbstom:NBStom:1.0.0")
+    implementation("com.github.EmortalMC:NBStom:ed401abb5d")
+//    implementation("dev.emortal.nbstom:NBStom:1.0.0")
 
 //    compileOnly("redis.clients:jedis:4.3.1")
     compileOnly("org.jetbrains.kotlinx:kotlinx-serialization-json:1.4.1")

@@ -6,7 +6,6 @@ import dev.emortal.lobby.LobbyMain.Companion.gameListingConfig
 import dev.emortal.lobby.LobbyMain.Companion.gameListingPath
 import dev.emortal.lobby.LobbyMain.Companion.gameSelectorGUI
 import dev.emortal.lobby.LobbyMain.Companion.instance
-import dev.emortal.lobby.LobbyMain.Companion.lobbyBiome
 import dev.emortal.lobby.config.GameListingConfig
 import dev.emortal.lobby.inventories.GameSelectorGUI
 import dev.emortal.lobby.modules.loadLoaders
@@ -21,9 +20,6 @@ import net.kyori.adventure.text.serializer.gson.GsonComponentSerializer
 import net.minestom.server.MinecraftServer
 import net.minestom.server.instance.Instance
 import net.minestom.server.tag.Tag
-import net.minestom.server.utils.NamespaceID
-import net.minestom.server.world.biomes.Biome
-import net.minestom.server.world.biomes.BiomeEffects
 import java.nio.file.Path
 import java.util.concurrent.ConcurrentHashMap
 
@@ -44,27 +40,6 @@ class LobbyMain  {
         val gameListingPath = Path.of("./gameListings.json")
         lateinit var gameSelectorGUI: GameSelectorGUI
 
-        val lobbyBiome: Biome = Biome.builder()
-            .category(Biome.Category.PLAINS)
-            .scale(0.05F)
-            .depth(0.125F)
-            .name(NamespaceID.from("minecraft:snowy_plains"))
-            .temperature(0.05F)
-            .downfall(0.3F)
-            .precipitation(Biome.Precipitation.SNOW)
-            .effects(
-                BiomeEffects.builder()
-                    .fogColor(12638463)
-                    .waterColor(4159204)
-                    .waterFogColor(329011)
-                    .skyColor(8364543)
-                    .grassColorModifier(BiomeEffects.GrassColorModifier.NONE)
-                    .build()
-            )
-            .build()
-
-
-
         fun createInstance(): Instance {
             val newInstance = MinecraftServer.getInstanceManager().createInstanceContainer()
             newInstance.timeRate = 0
@@ -82,7 +57,7 @@ class LobbyMain  {
                 }
             }
 
-            return newInstance;
+            return newInstance
         }
 
         fun refreshHolo(gameName: String, players: Int) {
@@ -97,15 +72,12 @@ class LobbyMain  {
 }
 
 fun main() {
-    Immortal.initAsServer(null)
+    Immortal.initAsServer(false, null)
 
     instance = LobbyMain.createInstance()
 
     gameListingConfig = ConfigHelper.initConfigFile(gameListingPath, GameListingConfig())
     gameSelectorGUI = GameSelectorGUI()
-
-    // SNOWY_PLAINS
-    MinecraftServer.getBiomeManager().addBiome(lobbyBiome)
 
     loadLoaders()
 }
